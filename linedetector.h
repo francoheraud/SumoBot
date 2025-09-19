@@ -1,0 +1,1 @@
+// Line detector header file

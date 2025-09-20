@@ -1,6 +1,6 @@
-// Ultrasonic sensor code
+// Ultrasonic sensor module
 // Allan Wu (23810308)
-// 20 September 2025
+// 21 September 2025
 #include <Arduino.h>
 
 #define ULTRASONIC_TRIGGER 1

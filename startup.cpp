@@ -1,10 +1,10 @@
 // Startup code (general user UI)
 // Allan Wu (23810308)
-// Modified from time data plotter, also by me
 // 21 September 2025
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
+// This is driver code (can run as main.cpp), I still need to make the header file and write a setup function
 #define MENU_X_DATUM 32
 #define MENU_Y_DATUM 20
 #define BUFFER_CHARS 50
@@ -31,7 +31,7 @@ char robotModeDescriptions[6][BUFFER_CHARS] = {
   "2. TEST 2 (ROTATION)",
   "3. TEST 3 (TBD)",
   "4. TEST 4 (TBD)",
-  "5. COMPETITION_MODE",
+  "5. COMPETITION_MODE"
 };
 robotMode modeOfOperation = DEBUG_MODE;
 

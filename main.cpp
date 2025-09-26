@@ -3,10 +3,10 @@
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
-#include "startup.h"
-#include "ultrasonic.h"
-#include "linedetector.h"
-#include "motordriver.h"
+#include "StartupMenu.h"
+#include "Ultrasonic.h"
+#include "LineDetector.h"
+#include "MotorDriver.h"
 
 TFT_eSPI tft = TFT_eSPI();
 

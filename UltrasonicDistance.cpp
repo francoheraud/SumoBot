@@ -68,8 +68,4 @@ int pollUltrasonicSensor() {
     ultrasonicDistanceNearestCm = (int)(ultrasonicDistanceCm + 0.5); // Distance rounded to nearest cm
     
     return elapsedTimeMicroseconds; // Return elapsed time
-
-    // Wait before the next measurement
-    // if (pollDelayMicroseconds > elapsedTimeMicroseconds)
-        // delayMicroseconds(pollDelayMicroseconds - elapsedTimeMicroseconds);
 }

@@ -124,5 +124,4 @@ void setup() {
 
 void loop() {
     readAndDisplayIrSensor();
-};
-*/
+};*/

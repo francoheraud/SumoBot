@@ -8,7 +8,7 @@ extern int ULTRASONIC_TRIGGER;
 extern int ULTRASONIC_ECHO;
 
 // Global data variables that can be used in other files
-// Note that sentinel value -1 means "NO ENEMY FOUND"
+// Note that sentinel value -1 indicates "NO ENEMY FOUND"
 extern double ultrasonicDistanceCm;
 extern int ultrasonicDistanceNearestCm;
 

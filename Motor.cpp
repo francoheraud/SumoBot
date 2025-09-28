@@ -1,5 +1,5 @@
-#include "motor.hpp"
-#include "encoder.hpp"
+#include "Motor.h"
+#include "Encoder.h"
 
 // Motor pins
 static int IN1A, IN2A, PWMA;

@@ -5,13 +5,8 @@
 static int IN1A, IN2A, PWMA;
 static int IN1B, IN2B, PWMB;
 
-// PID parameters
-static float Kp = 0.8, Ki = 0.1, Kd = 0.05;
-
 // PID control variables
 static long lastCountA = 0, lastCountB = 0;
-static float integralA = 0, integralB = 0;
-static float lastErrorA = 0, lastErrorB = 0;
 static int targetSpeed = 0; // ticks/sec
 static Direction currentDir = FORWARD;
 
@@ -74,12 +69,10 @@ void stopMotors() {
     analogWrite(PWMB,0);
 }
 
-void updateMotors() {
-    static unsigned long lastTime = 0;
-    unsigned long now = millis();
-    float dt = (now - lastTime) / 1000.0; // seconds
-    if (dt < 0.05) return; // update every 50ms
-    lastTime = now;
+void updateMotors() { // bang-bang controller
+    static unsigned long lastTime = millis();
+    unsigned long dt = (millis() - lastTime); //milliseconds 
+    if (dt < 50) return; // update every 50ms
 
     long countA = getEncoderCountA();
     long countB = getEncoderCountB();
@@ -93,26 +86,10 @@ void updateMotors() {
     float actualSpeedA = deltaA / dt;
     float actualSpeedB = deltaB / dt;
 
-    // PID for A
-    float errorA = targetSpeed - actualSpeedA;
-    integralA += errorA * dt;
-    float derivativeA = (errorA - lastErrorA) / dt;
-   
-    float outputA = Kp*errorA + Ki*integralA + Kd*derivativeA;
-    lastErrorA = errorA;
-
-    // PID for B
-    float errorB = targetSpeed - actualSpeedB;
-    integralB += errorB * dt;
-    float derivativeB = (errorB - lastErrorB) / dt;
-   
-    float outputB = Kp*errorB + Ki*integralB + Kd*derivativeB;
-    lastErrorB = errorB;
-
-    // Update PWM Values
-    int pwmA = constrain((int)outputA, 0, 255);
-    int pwmB = constrain((int)outputB, 0, 255);
+    int pwmA = (actualSpeedA < targetSpeed) ? 255 : 0; // on and off valyes
+    int pwmB = (actualSpeedB < targetSpeed) ? 255 : 0;
 
     analogWrite(PWMA, pwmA);
     analogWrite(PWMB, pwmB);
+    lastTime = millis();
 }

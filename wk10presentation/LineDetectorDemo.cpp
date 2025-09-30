@@ -1,5 +1,6 @@
-// Line detector demo, using R-2R resistor ladder DAC
-// 24 September 2025
+// Line detector demo with R-2R resistor ladder DAC
+// Allan Wu (23810308)
+// 30 September 2025
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>

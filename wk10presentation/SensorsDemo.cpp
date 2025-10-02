@@ -4,8 +4,6 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
-// These are default values, they may be overriden using the setup function
-int IR_DIGITAL_PIN = 2;
 int IR_ANALOG_PIN = 13;
 int LEFT_TRIGGER_PIN = 18;
 int LEFT_ECHO_PIN = 17;
@@ -63,7 +61,6 @@ void setup() {
     tft.init();
 
     // Setup pins
-    pinMode(IR_DIGITAL_PIN, INPUT);
     pinMode(IR_ANALOG_PIN, INPUT);
     pinMode(LEFT_TRIGGER_PIN, OUTPUT);
     pinMode(LEFT_ECHO_PIN, INPUT);

@@ -10,19 +10,19 @@
 ## Other:
 - LineDetector needs lots of work, plz work on it so that it integrates well with the entire project!
 - Someone plz integrate Allan's resistive divider idea in IR line detector code
-
+- Will add .stl files to chassis directory soon
 
 ## MCU PIN OUT (FINAL)
--1->IN1
--2->IN2
--3->IN3
--10->IN4
--11->PWM A
--12->PWM B
--13->Encoder A
--43->Ultrasonic 1 Trigger
--44->Ultrasonic 1 Echo
--18->Ultrasonic 2 Trigger
--17->Ultrasonic 2 Echo
--21->IR Sensors
--16->Encoder B
+- 1->IN1
+- 2->IN2
+- 3->IN3
+- 10->IN4
+- 11->PWM A
+- 12->PWM B
+- 13->Encoder A
+- 43->Ultrasonic 1 Trigger
+- 44->Ultrasonic 1 Echo
+- 18->Ultrasonic 2 Trigger
+- 17->Ultrasonic 2 Echo
+- 21->IR Sensors
+- 16->Encoder B

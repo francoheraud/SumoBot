@@ -8,8 +8,10 @@
 - Stop defining seperate instances of important structs/objects (i.e. TFT_eSPI), define it in just one spot or pass a pointer to the instance in src file functions (parameters) and instantiate it once in main.cpp!
 
 ## Other:
-- LineDetector needs lots of work, plz work on it so that it integrates well with the entire project!
-- Someone plz integrate Allan's resistive divider idea in IR line detector code
+- Allan: I have rewritten LineDetectors using ADC (2-2R network, 51K and 100K resistors).
+- I have defined a struct Line_t containing 4 integers, one for each sensor. 0 indicates white (line), 1 indicates black (safe).
+- The lookup values in "LineDetectors.h" may need to be updated.
+  
 - Will add .stl files to chassis directory soon
 
 ## MCU PIN OUT (FINAL)

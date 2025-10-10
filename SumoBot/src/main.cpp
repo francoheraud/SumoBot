@@ -1,16 +1,15 @@
+#include <Arduino.h>
+#include <TFT_eSPI.h>
 #include "StartupMenu.h"
-#include "UltrasonicDistance.h"
-#include "LineDetector.h"
+#include "Sensors.h"
 #include "Motor.h"
 
 TFT_eSPI tft = TFT_eSPI();
 
-
 void setup() {
   tft.init();
-  setupUltrasonicSensor(true);
 }
 
 void loop() {
-  pollUltrasonicSensor();
+  delay(100);
 }

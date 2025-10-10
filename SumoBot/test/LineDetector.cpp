@@ -2,6 +2,7 @@
 // Original by Anuvrat, with modifications by Allan
 // 24 September 2025
 
+#include <Arduino.h>
 #include <TFT_eSPI.h>
 
 // Assume tft is initialised somewhere else
@@ -107,10 +108,6 @@ void readAndDisplayIrSensor() {
     if (IR_ENABLE_TFT || IR_ENABLE_SERIAL) 
         delay(IR_DELAY_MILLIS);
 }
-
-
-
-
 
 // BASIC DRIVER CODE (copy and paste this into main.cpp)
 /*

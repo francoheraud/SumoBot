@@ -4,6 +4,32 @@
 #include "Sensors.h"
 #include <Arduino.h>
 
+int lineBinaryCode[4] = {0};
+
+// Convert between analog voltage reading and binary codes 0000 to 1111
+// (topLeft, topRight, bottomLeft, bottomRight): 0 = WHITE, 1 = BLACK
+int ADCLookup[16] = {
+    1499, // 0000
+    1599, // 0001
+    1799, // 0010
+    1899, // 0011
+
+    2049, // 0100
+    2199, // 0101
+    2299, // 0110
+    2499, // 0111
+
+    2699, // 1000
+    2839, // 1001
+    2999, // 1010
+    3149, // 1011
+
+    3349, // 1100
+    3499, // 1101
+    3799, // 1110
+    4096, // 1111
+};
+
 void initSensors() // Please note that the Line Detector pin must support ADC
 {
     pinMode(LEFT_TRIGGER, OUTPUT);
@@ -13,10 +39,24 @@ void initSensors() // Please note that the Line Detector pin must support ADC
     pinMode(LINEDETECTOR_DAC, INPUT);
 }
 
+Sensors_t *Sensors()
+{
+	Sensors_t *ptr = (Sensors_t *)malloc(sizeof(Sensors_t));
+	ptr->leftCm = OUT_OF_RANGE;
+	ptr->rightCm = OUT_OF_RANGE;
+
+	ptr->analogReading = 4095;
+	ptr->topLeft = 1;
+	ptr->topRight = 1;
+	ptr->bottomLeft = 1;
+	ptr->bottomRight = 1;
+	return ptr;
+}
+
 void detectLine(Sensors_t *sensors)
 {
-    int binarycode[4]; // For debug purposes we can check the values stored in here
     int analogValue = analogRead(LINEDETECTOR_DAC);
+	sensors->analogReading = analogValue;
 	int *ptrs[4] = {&sensors->bottomRight, &sensors->bottomLeft, &sensors->topRight, &sensors->topLeft};
     int encoding = 16; // Defaults to '1111'
     for (int i = 0; i < 16; i++) {
@@ -28,14 +68,14 @@ void detectLine(Sensors_t *sensors)
     for (int j = 0; j < 4; j++) {
         int remainder = encoding % 2;
         encoding /= 2;
-        binarycode[j] = remainder;
+        lineBinaryCode[j] = remainder;
         *ptrs[j] = remainder;
     }
 }
 
 void pollDistance(int side, Sensors_t *sensors)
 {
-    double ultrasonicDistanceCm;
+	double ultrasonicDistanceCm;
 	unsigned long durationMicroseconds;
 	int echoPin, triggerPin;
 	int *sensorPtr;

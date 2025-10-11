@@ -2,52 +2,70 @@
 #define MOTOR_H
 #include <Arduino.h>
 
-#define SPEED_POLLING_PERIOD        50 // ms
+// ===================== CONFIGURATION =====================
+// Motor driver pin mappings
+#define IN1A 1
+#define IN2A 2
+#define IN1B 3
+#define IN2B 10
+#define PWMA 11
+#define PWMB 12
 
-#define IN1A    1
-#define IN1B    2
-#define IN2A    3
-#define IN2B    10
+// Encoder pins
+#define ENCA 13
+#define ENCB 0
 
-#define PWMA    11
-#define PWMB    12
+// LEDC PWM Configuration
+#define PWM_CHANNEL_A 0
+#define PWM_CHANNEL_B 1
+#define PWM_FREQ 1000
+#define PWM_RESOLUTION 8  // 8-bit (0-255)
 
-// max recorded speed in ticks/s experimentally?
-const float maxSpeed = 1.0f;
+// PI Controller tuning
+constexpr float kp = 5.0f;
+constexpr float ki = 1.1f;
+constexpr float maxTickSpeed = 25.0f;  // Changed: ticks per 10ms (desired speed)
+constexpr unsigned long PI_UPDATE_INTERVAL_MS = 100;  
 
-
-enum SpeedLevel { 
-    MIN,
-    MEDIUM, 
-    MAX 
+enum Direction {
+    FORWARD,
+    REVERSE,
+    LEFT,
+    RIGHT,
+    ROTATE_CW,
+    ROTATE_CCW
 };
-
-enum Direction { 
-    FORWARD, 
-    REVERSE, 
-    LEFT, 
-    RIGHT, 
-    ROTATE_CW, 
-    ROTATE_CCW 
-};
-
 
 typedef struct {
-    float speedA;
-    float speedB;
-    uint8_t pwmA;
-    uint8_t pwmB;
+    float desiredSpeedA;
+    float desiredSpeedB;
 
-    SpeedLevel desiredSpeed;
-    Direction dir;
+    int pwmA;
+    int pwmB;
+
+    int velA;
+    int velB;
+
+    Direction direction;
 } Motor_t;
 
+// ===================== GLOBAL VARIABLES =====================
+extern volatile long encoderCountA;
+extern volatile long encoderCountB;
+extern int rMotNewA;
+extern int rMotNewB;
+
+// ===================== FUNCTION PROTOTYPES =====================
 void initMotors(void);
-
-void move(Direction dir);
+void initEncoderA(void);
+void initEncoderB(void);
+void move(Motor_t *motor);
 void stopMotors(void);
+void updatePIController(Motor_t *motor, float velA, float velB);
+long getEncoderCountA(void);
+long getEncoderCountB(void);
+void resetEncoders(void);
+void IRAM_ATTR handleEncoderA(void);
+void IRAM_ATTR handleEncoderB(void);
 
-void updateMotorSpeed(Motor_t *motor);
-void updateMotors(Motor_t *motor);
-
-#endif
+#endif // MOTOR_H

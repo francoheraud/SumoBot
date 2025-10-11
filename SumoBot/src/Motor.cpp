@@ -1,104 +1,136 @@
-// Pratyush + Allan + Franco
-
 #include "Motor.h"
-#include "Encoder.h"
 
-static long lastCountA = 0, lastCountB = 0;
-static uint8_t targetSpeed = 0;
-static Direction currentDir = FORWARD;
+volatile long encoderCountA = 0;
+volatile long encoderCountB = 0;
 
-static int speedToTargetTicks(Motor_t *motor) {
-    switch(motor->desiredSpeed) {
-        case MIN: return 50;
-        case MEDIUM: return 120;
-        case MAX: return 255;
-    }
-    return 0;
+int rMotNewA = 0;
+int rMotNewB = 0;
+
+void IRAM_ATTR handleEncoderA() {
+    encoderCountA++;
+}
+
+void IRAM_ATTR handleEncoderB() {
+    encoderCountB++;
+}
+
+void initEncoderA() {
+    pinMode(ENCA, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(ENCA), handleEncoderA, RISING);
+}
+
+void initEncoderB() {
+    pinMode(ENCB, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(ENCB), handleEncoderB, RISING);
+}
+
+long getEncoderCountA() { return encoderCountA; }
+long getEncoderCountB() { return encoderCountB; }
+
+void resetEncoders() {
+    encoderCountA = 0;
+    encoderCountB = 0;
 }
 
 void initMotors(void) {
-    pinMode(IN1A, OUTPUT); pinMode(IN2A, OUTPUT); pinMode(PWMA, OUTPUT);
-    pinMode(IN1B, OUTPUT); pinMode(IN2B, OUTPUT); pinMode(PWMB, OUTPUT);
-    initEncoderA(PWMA);
-    initEncoderB(PWMB);
+    pinMode(IN1A, OUTPUT);
+    pinMode(IN2A, OUTPUT);
+    pinMode(IN1B, OUTPUT);
+    pinMode(IN2B, OUTPUT);
+    
+    pinMode(PWMA, OUTPUT);
+
+    ledcSetup(PWM_CHANNEL_A, PWM_FREQ, PWM_RESOLUTION);
+    ledcSetup(PWM_CHANNEL_B, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttachPin(PWMA, PWM_CHANNEL_A);
+    ledcAttachPin(PWMB, PWM_CHANNEL_B);
+
+    stopMotors();
+    initEncoderA();
+    initEncoderB();
 }
 
 void move(Motor_t *motor) {
-    switch(motor->dir) {
+    switch (motor->direction) {
         case FORWARD:
-            digitalWrite(IN1A,HIGH); digitalWrite(IN2A,LOW);
-            digitalWrite(IN1B,HIGH); digitalWrite(IN2B,LOW);
+            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
+            motor->desiredSpeedA = maxTickSpeed;
+            motor->desiredSpeedB = maxTickSpeed;
             break;
+
         case REVERSE:
-            digitalWrite(IN1A,LOW); digitalWrite(IN2A,HIGH);
-            digitalWrite(IN1B,LOW); digitalWrite(IN2B,HIGH);
+            digitalWrite(IN1A, LOW); digitalWrite(IN2A, HIGH);
+            digitalWrite(IN1B, LOW); digitalWrite(IN2B, HIGH);
+            motor->desiredSpeedA = maxTickSpeed * 0.5f;
+            motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
-        case RIGHT: // pivot right
-            digitalWrite(IN1A,HIGH); digitalWrite(IN2A,LOW);
-            digitalWrite(IN1B,LOW); digitalWrite(IN2B,LOW);
+
+        case RIGHT:
+            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, LOW);  digitalWrite(IN2B, LOW);
+            motor->desiredSpeedA = maxTickSpeed;
+            motor->desiredSpeedB = 0.0f;
             break;
-        case LEFT:  // pivot left
-            digitalWrite(IN1A,LOW); digitalWrite(IN2A,LOW);
-            digitalWrite(IN1B,HIGH); digitalWrite(IN2B,LOW);
+
+        case LEFT:
+            digitalWrite(IN1A, LOW);  digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
+            motor->desiredSpeedA = 0.0f;
+            motor->desiredSpeedB = maxTickSpeed;
             break;
+
         case ROTATE_CW:
-            digitalWrite(IN1A,HIGH); digitalWrite(IN2A,LOW);
-            digitalWrite(IN1B,LOW); digitalWrite(IN2B,HIGH);
+            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, LOW);  digitalWrite(IN2B, HIGH);
+            motor->desiredSpeedA = maxTickSpeed * 0.5f;
+            motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
+
         case ROTATE_CCW:
-            digitalWrite(IN1A,LOW); digitalWrite(IN2A,HIGH);
-            digitalWrite(IN1B,HIGH); digitalWrite(IN2B,LOW);
+            digitalWrite(IN1A, LOW);  digitalWrite(IN2A, HIGH);
+            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
+            motor->desiredSpeedA = maxTickSpeed * 0.5f;
+            motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
     }
+
+
+    
 }
 
 void stopMotors(void) {
-    analogWrite(PWMA,0);
-    analogWrite(PWMB,0);
+    ledcWrite(PWM_CHANNEL_A, 0);
+    ledcWrite(PWM_CHANNEL_B, 0);
+    digitalWrite(IN1A, LOW);
+    digitalWrite(IN2A, LOW);
+    digitalWrite(IN1B, LOW);
+    digitalWrite(IN2B, LOW);
 }
 
-void updateMotorSpeed(Motor_t *motor) {
 
-    static unsigned long lastTime = millis();
-    unsigned long dt = (millis() - lastTime); 
-    if (dt < SPEED_POLLING_PERIOD) return; 
+void updatePIController(Motor_t *motor, float velA, float velB) {
+    static long encOldA = 0, encOldB = 0;
+    static int rOldA = 0, rOldB = 0;
+    static int errOldA = 0, errOldB = 0;
 
-    long countA = getEncoderCountA();
-    long countB = getEncoderCountB();
+    int errA = motor->desiredSpeedA - velA;
+    int errB = motor->desiredSpeedB - velB;
 
-    long deltaA = countA - lastCountA;
-    long deltaB = countB - lastCountB;
+    rMotNewA = rOldA + (int)(kp * (errA - errOldA)) + (int)(ki * ((errA + errOldA) / 2));
+    rMotNewB = rOldB + (int)(kp * (errB - errOldB)) + (int)(ki * ((errB + errOldB) / 2));
 
-    lastCountA = countA;
-    lastCountB = countB;
+    rMotNewA = constrain(rMotNewA, 0, 255);
+    rMotNewB = constrain(rMotNewB, 0, 255);
+    rOldA = constrain(rOldA, 0, 255);
+    rOldB = constrain(rOldB, 0, 255);
 
-    motor->speedA = deltaA / dt;
-    motor->speedB = deltaB / dt;
-    lastTime = millis();
-}
+    rOldA = rMotNewA;
+    rOldB = rMotNewB;
 
-// WIP
-void updateMotors(Motor_t *motor) {
-    updateMotorSpeed(motor);
+    errOldA = errA;
+    errOldB = errB;
 
-    // 1. On-off control for adhering to a target speed
-    targetSpeed = speedToTargetTicks(motor);
-    motor->pwmA = (motor->speedA < targetSpeed) ? 255 : 0; 
-    motor->pwmB = (motor->speedB < targetSpeed) ? 255 : 0;
-
-    // 2. Proportional control for synchronising motor speeds (plz tune kp!)
-    const float tolerance = 12.0f, kpSync = 0.1f;
-    float error = motor->speedA - motor->speedB;
-
-    if (motor->dir == FORWARD || motor->dir == REVERSE) {
-        motor->pwmA -= (uint8_t)(kpSync * error);
-        motor->pwmB += (uint8_t)(kpSync * error);
-    }
-
-    motor->pwmA = constrain(motor->pwmA, 0, 255);
-    motor->pwmB = constrain(motor->pwmB, 0, 255);
-
-    analogWrite(PWMA, motor->pwmA);
-    analogWrite(PWMB, motor->pwmB);
-
-}
+    ledcWrite(PWM_CHANNEL_A, rMotNewA);
+    ledcWrite(PWM_CHANNEL_B, rMotNewB);
+} 

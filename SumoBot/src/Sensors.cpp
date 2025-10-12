@@ -47,7 +47,7 @@ void recalibrateADC(int analogReadings[16])
     for (int i = 0; i < 16; i++) {
         curr = analogReadings[i];
         next = (i+1 < 16) ? analogReadings[i+1] : 4096;
-        ADCLookup[i] = (int)(curr + next)/2;
+        ADCLookup[i] = (curr + next)/2;
     };
 }
 

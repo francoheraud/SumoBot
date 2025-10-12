@@ -13,7 +13,7 @@
 
 // Encoder pins
 #define ENCA 13
-#define ENCB 0
+#define ENCB 16
 
 // LEDC PWM Configuration
 #define PWM_CHANNEL_A 0
@@ -22,8 +22,8 @@
 #define PWM_RESOLUTION 8  // 8-bit (0-255)
 
 // PI Controller tuning
-constexpr float kp = 5.0f;
-constexpr float ki = 1.1f;
+constexpr float kp = 7.0f;
+constexpr float ki = 2.0f;
 constexpr float maxTickSpeed = 25.0f;  // Changed: ticks per 10ms (desired speed)
 constexpr unsigned long PI_UPDATE_INTERVAL_MS = 100;  
 

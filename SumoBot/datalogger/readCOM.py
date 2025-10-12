@@ -3,60 +3,61 @@ Reading raw data from /dev/ttyACM0 port for graphing purposes.
 - Franco H
 """
 
-
 import time
 import serial
 import matplotlib.pyplot as plt
-import numpy as np
 
-
-ser = serial.Serial(port='/dev/ttyACM0', baudrate=38400, timeout=1)
+ser = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=1)
+time.sleep(2)  # wait for ESP32 to reboot
+ser.reset_input_buffer()
 
 plt.ion()
-fig,ax = plt.subplots()
-ax.set_title("MAX30102 Sensor Data")
+fig, ax = plt.subplots()
+ax.set_title("TT DC Motor PI Controller")
 ax.set_xlabel("Samples")
-ax.set_ylabel("Magnitude")
+ax.set_ylabel("Velocity (Ticks/s)")
 
-filteredOutData, rawData= [], []
-xData = []
+desiredVelocity, actualVelocity, xData = [], [], []
+line1, = ax.plot([], [], label="Desired Velocity")
+line2, = ax.plot([], [], label="Actual Velocity")
+ax.legend()
+ax.set_ylim(bottom=0, top=30)
 
+inc = 0
 
-line1, = ax.plot(xData, filteredOutData)
-line2, = ax.plot(xData, rawData)
+try:
+    while True:
+        try:
+            line = ser.readline().decode().strip()
+            if not line:
+                continue
 
-ax.set_ylim(bottom=10000.0, top = 11500.0)
-inc=0
+            floatData = [float(x) for x in line.split(',')]
+            if len(floatData) < 2:
+                continue
 
-while True:
-    try:
-        data = ser.readline().decode().strip().split(',')   
-        floatData = [float(x) for x in data]
+            inc += 1
+            if inc == 500:
+                inc = 0
+                xData.clear()
+                desiredVelocity.clear()
+                actualVelocity.clear()
 
-        inc+=1
-        if inc == 500:
-            inc = 0
-            xData.clear()
-            filteredOutData.clear()
-            rawData.clear()
-        xData.append(inc)
+            xData.append(inc)
+            desiredVelocity.append(floatData[0])
+            actualVelocity.append(floatData[1])
 
+            line1.set_data(xData, desiredVelocity)
+            line2.set_data(xData, actualVelocity)
 
+            ax.relim()
+            ax.autoscale_view(tight=True, scalex=True, scaley=True)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
 
-        filteredOutData.append(floatData[0])
-        rawData.append(floatData[1])
+        except ValueError:
+            continue
 
-        line1.set_data(xData, filteredOutData)
-        line2.set_data(xData, rawData)
-        ax.relim()
-        ax.autoscale_view(tight=True, scalex=True, scaley=True)
-
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-
-    except KeyboardInterrupt:
-        ser.close()
-        break
-        
-
-
+except KeyboardInterrupt:
+    print("Closing serial connection...")
+    ser.close()

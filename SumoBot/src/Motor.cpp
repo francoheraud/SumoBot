@@ -94,9 +94,7 @@ void move(Motor_t *motor) {
             motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
     }
-
-
-    
+  
 }
 
 void stopMotors(void) {

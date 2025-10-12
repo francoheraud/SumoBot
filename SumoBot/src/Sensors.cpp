@@ -39,6 +39,18 @@ void initSensors() // Please note that the Line Detector pin must support ADC
     pinMode(LINEDETECTOR_DAC, INPUT);
 }
 
+// Recalibration requires passing in an array of 16 analog readings
+// Input array should start at 0000 (all white) and end with 1111 (all black)
+void recalibrateADC(int analogReadings[16])
+{
+    int curr, next;
+    for (int i = 0; i < 16; i++) {
+        curr = analogReadings[i];
+        next = (i+1 < 16) ? analogReadings[i+1] : 4096;
+        ADCLookup[i] = (int)(curr + next)/2;
+    };
+}
+
 Sensors_t *Sensors()
 {
 	Sensors_t *ptr = (Sensors_t *)malloc(sizeof(Sensors_t));

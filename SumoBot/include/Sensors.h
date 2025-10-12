@@ -17,8 +17,10 @@
 // From my testing, 15000 us timeout limits the distance range to ~200 cm
 #define ULTRASONIC_TIMEOUT_US	15000
 
-// For debugging
+// Lookup table
 extern int ADCLookup[16];
+
+// Global variable for debugging purposes
 extern int lineBinaryCode[4];
 
 typedef struct {
@@ -39,7 +41,10 @@ typedef struct {
 // Pin setup
 void initSensors();
 
-// Constructor
+// Calculates ADC lookup table using an array of analog readings
+void recalibrateADC(int analogReadings[16]);
+
+// Constructor returns a pointer to sensor struct
 Sensors_t *Sensors();
 
 void detectLine(Sensors_t *sensors);

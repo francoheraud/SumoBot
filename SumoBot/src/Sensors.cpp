@@ -57,7 +57,7 @@ Sensors_t *Sensors()
 	ptr->leftCm = OUT_OF_RANGE;
 	ptr->rightCm = OUT_OF_RANGE;
 
-	ptr->analogReading = 4095;
+	ptr->analogReading = 0;
 	ptr->frontLeft = 0;
 	ptr->frontRight = 0;
 	ptr->rearLeft = 0;

@@ -3,8 +3,10 @@
 
 #include "Sensors.h"
 #include <Arduino.h>
+#include <TFT_eSPI.h>
+#include <Preferences.h>
 
-int lineBinaryCode[4] = {0};
+Preferences botSettings; 
 
 // Convert between analog voltage reading and binary codes 0000 to 1111
 // (frontLeft, frontRight, rearLeft, rearRight): 0 = WHITE, 1 = BLACK
@@ -30,6 +32,28 @@ int ADCLookup[16] = {
     4096, // 1111
 };
 
+const char *ADCStrings[16] = {
+    "0000 NO_LINE ", // 0000
+    "0001 R_RIGHT ", // 0001
+    "0010 R_LEFT  ", // 0010
+    "0011 _REAR_  ", // 0011
+
+    "0100 F_RIGHT ", // 0100
+    "0101 _RIGHT_ ", // 0101
+    "0110 INVALID1", // 0110
+    "0111 R_RIGHT2", // 0111
+
+    "1000 F_LEFT  ", // 1000
+    "1001 INVALID2", // 1001
+    "1010 _LEFT_  ", // 1010
+    "1011 R_LEFT_2", // 1011
+
+    "1100 _FRONT_ ", // 1100
+    "1101 F_RIGHT2", // 1101
+    "1110 F_LEFT_2", // 1110
+    "1111 OUTSIDE ", // 1111
+};
+
 void initSensors() // Please note that the Line Detector pin must support ADC
 {
     pinMode(LEFT_TRIGGER, OUTPUT);
@@ -37,18 +61,130 @@ void initSensors() // Please note that the Line Detector pin must support ADC
     pinMode(RIGHT_TRIGGER, OUTPUT);
     pinMode(RIGHT_ECHO, INPUT);
     pinMode(LINEDETECTOR_DAC, INPUT);
+
+	botSettings.begin("botSettings", false);
+    for (int i = 0; i < 16; i++) {
+	    if (!botSettings.isKey(ADCStrings[i]))
+		    botSettings.putInt(ADCStrings[i], ADCLookup[i]);
+        else 
+		    ADCLookup[i] = botSettings.getInt(ADCStrings[i]);
+    }
+	Serial.begin(115200);
+}
+
+void printADCLookup(TFT_eSPI *tft, uint32_t colour)
+{
+    tft->setTextSize(1);
+    tft->setTextColor(colour, TFT_BLACK);
+    tft->fillScreen(TFT_BLACK);
+    for (int i = 0; i < 16; i++) {
+        tft->setCursor(0, i*10);
+        tft->printf("%s: ADCLookup[%2d] = %d ", ADCStrings[i], i, ADCLookup[i]);
+        delay(100);
+    };
+    delay(4000);
+    tft->setTextColor(TFT_WHITE, TFT_BLACK);
+    tft->fillScreen(TFT_BLACK);
 }
 
 // Recalibration requires passing in an array of 16 analog readings
 // Input array should start at 0000 (all white) and end with 1111 (all black)
-void recalibrateADC(int analogReadings[16])
+void resetADCLookup(TFT_eSPI *tft)
 {
+    ADCLookup[0] = 1499; // 0000
+    ADCLookup[1] = 1599; // 0001
+    ADCLookup[2] = 1799; // 0010
+    ADCLookup[3] = 1899; // 0011
+
+    ADCLookup[4] = 2049; // 0100
+    ADCLookup[5] = 2199; // 0101
+    ADCLookup[6] = 2299; // 0110
+    ADCLookup[7] = 2499; // 0111
+
+    ADCLookup[8] = 2699; // 1000
+    ADCLookup[9] = 2839; // 1001
+    ADCLookup[10] = 2999; // 1010
+    ADCLookup[11] = 3149; // 1011
+
+    ADCLookup[12] = 3349; // 1100
+    ADCLookup[13] = 3499; // 1101
+    ADCLookup[14] = 3799; // 1110
+    ADCLookup[15] = 4096; // 1111
+
+    for (int i = 0; i < 16; i++) botSettings.putInt(ADCStrings[i], ADCLookup[i]);
+
+    printADCLookup(tft, TFT_RED);
+}
+
+void recalibrateADC_GUI(TFT_eSPI *tft)
+{
+    int calibrationStage = 0;
+    int currentReading = 0;
+    int prevL = 0, currL = 0;
+    int analogReadings[16] = {0};
+
+    tft->fillScreen(TFT_BLACK);
+    tft->setTextColor(TFT_WHITE, TFT_BLACK);
+    tft->setTextSize(2);
+    tft->setRotation(3);
+
+    while (calibrationStage < 16) {
+        currL = !digitalRead(14);
+        currentReading = analogRead(LINEDETECTOR_DAC);
+        tft->setCursor(5,10);
+        tft->printf("Calibrating ADC (%d/15)", calibrationStage);
+
+        tft->setCursor(5,40);
+        tft->printf("State: %s      ", ADCStrings[calibrationStage]);
+
+        if (calibrationStage == 6 || calibrationStage == 9) {
+            tft->setCursor(5,85);
+            tft->printf("Analog reading: N/A    ");
+            tft->setCursor(5,145);
+            tft->printf("<- Press R to continue     ");
+        } else {
+            tft->setCursor(5,85);
+            tft->printf("Analog reading: %d    ", currentReading);
+            tft->setCursor(5,145);
+            tft->printf("<- Press R to record   ");
+        }
+
+        if (prevL && !currL) {
+            analogReadings[calibrationStage] = currentReading;
+            if (calibrationStage == 6 || calibrationStage == 9) {
+                delay(100);
+            } else {
+                tft->setTextColor(TFT_GREEN, TFT_BLACK);
+                tft->setCursor(5,85);
+                tft->printf("Recorded value: %d      ", currentReading);
+                delay(400);
+                tft->setTextColor(TFT_WHITE, TFT_BLACK);
+            }
+            calibrationStage++;
+        }
+
+        prevL = currL;
+        delay(100);
+    }
+
+    tft->fillScreen(TFT_BLACK);
+    tft->setTextColor(TFT_GREEN, TFT_BLACK);
+    tft->setTextSize(1);
     int curr, next;
     for (int i = 0; i < 16; i++) {
         curr = analogReadings[i];
         next = (i+1 < 16) ? analogReadings[i+1] : 4096;
-        ADCLookup[i] = (curr + next)/2;
+        if (i == 6 || i == 9) ADCLookup[i] = (analogReadings[i-1] + next)/2;
+        else ADCLookup[i] = (curr + next)/2;
+		botSettings.putInt(ADCStrings[i], ADCLookup[i]);
+        tft->setCursor(0, i*10);
+        tft->printf("%s: ADCLookup[%2d] = %d ", ADCStrings[i], i, ADCLookup[i]);
+        delay(200);
     };
+    tft->printf(" Done! ");
+    delay(4000);
+    tft->setTextColor(TFT_WHITE, TFT_BLACK);
+	tft->fillScreen(TFT_BLACK);
 }
 
 Sensors_t *Sensors()
@@ -80,7 +216,6 @@ void detectLine(Sensors_t *sensors)
     for (int j = 0; j < 4; j++) {
         int remainder = encoding % 2;
         encoding /= 2;
-        lineBinaryCode[j] = remainder;
         *ptrs[j] = remainder;
     }
 }

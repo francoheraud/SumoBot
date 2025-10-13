@@ -69,9 +69,23 @@ void initSensors() // Please note that the Line Detector pin must support ADC
         else 
 		    ADCLookup[i] = botSettings.getInt(ADCStrings[i]);
     }
-	Serial.begin(115200);
 }
 
+Sensors_t *Sensors() // Java-style "constructor"
+{
+	Sensors_t *ptr = (Sensors_t *)malloc(sizeof(Sensors_t));
+	ptr->leftCm = OUT_OF_RANGE;
+	ptr->rightCm = OUT_OF_RANGE;
+
+	ptr->analogReading = 0;
+	ptr->frontLeft = 0;
+	ptr->frontRight = 0;
+	ptr->rearLeft = 0;
+	ptr->rearRight = 0;
+	return ptr;
+}
+
+// Display ADCLookup values
 void printADCLookup(TFT_eSPI *tft, uint32_t colour)
 {
     tft->setTextSize(1);
@@ -87,8 +101,7 @@ void printADCLookup(TFT_eSPI *tft, uint32_t colour)
     tft->fillScreen(TFT_BLACK);
 }
 
-// Recalibration requires passing in an array of 16 analog readings
-// Input array should start at 0000 (all white) and end with 1111 (all black)
+// Resets ADC lookup table and flash memory to hardcoded values
 void resetADCLookup(TFT_eSPI *tft)
 {
     ADCLookup[0] = 1499; // 0000
@@ -185,20 +198,6 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
     delay(4000);
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
 	tft->fillScreen(TFT_BLACK);
-}
-
-Sensors_t *Sensors()
-{
-	Sensors_t *ptr = (Sensors_t *)malloc(sizeof(Sensors_t));
-	ptr->leftCm = OUT_OF_RANGE;
-	ptr->rightCm = OUT_OF_RANGE;
-
-	ptr->analogReading = 0;
-	ptr->frontLeft = 0;
-	ptr->frontRight = 0;
-	ptr->rearLeft = 0;
-	ptr->rearRight = 0;
-	return ptr;
 }
 
 void detectLine(Sensors_t *sensors)

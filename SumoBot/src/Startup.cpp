@@ -1,18 +1,19 @@
 // Startup code (general user UI)
 // Developer: Allan Wu (23810308)
 // Rework: Franco Heraud (23602168)
-#include "StartupMenu.h"
+#include "Startup.h"
+#include "Sensors.h"
 
 char robotModeDescriptions[6][BUFFER_CHARS] = {
-  "0. DEBUG MODE",
-  "1. TEST 1 (DRIVE STRAIGHT)",
-  "2. TEST 2 (ROTATION)",
-  "3. TEST 3 (TBD)",
-  "4. TEST 4 (TBD)",
-  "5. COMPETITION_MODE"
+  "0. PRINT ADC LOOKUP TABLE",
+  "1. CALIBRATE LINE DETECTOR ADC",
+  "2. RESET ALL SETTINGS",
+  "3. TEST MOTORS",
+  "4. TEST SENSORS",
+  "5. START COMPETITION"
 };
 
-robotMode modeOfOperation = DEBUG_MODE;
+menuOption currentMenu;
 
 void userSelectFunction(TFT_eSPI *tft) {
   int prevLeft = 0, prevRight = 0;
@@ -21,23 +22,20 @@ void userSelectFunction(TFT_eSPI *tft) {
   bool startOperation = false;
   unsigned long lastUpdateTime = millis();
   float delaySeconds = 9.9;
-  char titleText[BUFFER_CHARS];
   tft->setTextFont(2);
 
   while (!startOperation) {
-    float countdownSeconds = delaySeconds - (millis() - lastUpdateTime)/1000.0;
-    snprintf(titleText, BUFFER_CHARS, "SELECT MODE (START IN %.1f s)   ", countdownSeconds);
-    tft->drawString(titleText, MENU_X_DATUM, MENU_Y_DATUM-5);
+    tft->setCursor(MENU_X_DATUM, MENU_Y_DATUM-5);
+    tft->printf("[L] START ROUTINE   [R] SCROLL OPTIONS");
     currLeft = !digitalRead(LEFT_BUTTON);
     currRight = !digitalRead(RIGHT_BUTTON);
 
     if (prevRight && !currRight) {
       currChoice = (currChoice + 1) % 6; // Must update this whenever we add/remove robotModes
       lastUpdateTime = millis();
-    } 
-    else if (prevLeft && !currLeft) {
-      currChoice = (currChoice + 5) % 6;
-      lastUpdateTime = millis();
+    } else if (prevLeft && !currLeft) {
+      tft->setTextFont(0);
+      startOperation = true;
     }
 
     if (prevChoice != currChoice) {
@@ -49,36 +47,36 @@ void userSelectFunction(TFT_eSPI *tft) {
 
       tft->setTextColor(HIGH_EMPHASIS_COLOUR, BACKGROUND_COLOUR);
       tft->drawString(robotModeDescriptions[currChoice], MENU_X_DATUM, MENU_Y_DATUM+20*(currChoice+1));
-      
-      switch (currChoice) {
-        case (0):
-          modeOfOperation = DEBUG_MODE;
-          break;
-        case (1):
-          modeOfOperation = TEST_1_DRIVE_STRAIGHT;
-          break;
-        case (2):
-          modeOfOperation = TEST_2_ROTATION;
-          break;
-        case (3):
-          modeOfOperation = TEST_3_TBD;
-          break;
-        case (4):
-          modeOfOperation = TEST_4_TBD;
-          break;
-        case (5):
-          modeOfOperation = COMPETITION_MODE;
-          break;
-      }
     }
 
     tft->setTextColor(PRIMARY_TEXT_COLOUR, BACKGROUND_COLOUR);
+    currentMenu = (menuOption)currChoice;
     prevChoice = currChoice;
 
-    if (countdownSeconds <= 0) {
-      startOperation = true;
-    }
     prevLeft = currLeft;
     prevRight = currRight;
+  }
+
+  tft->setTextFont(0);
+
+  switch (currentMenu) {
+    case (CALIBRATE):
+      recalibrateADC_GUI(tft);
+      userSelectFunction(tft);
+      break;
+    case (RESET):
+      resetADCLookup(tft);
+      userSelectFunction(tft);
+      break;
+    case (MOTORS):
+      break;
+    case (SENSORS):
+      break;
+    case (PRINT):
+      printADCLookup(tft, TFT_SILVER);
+      userSelectFunction(tft);
+      break;
+    case (COMPETITION):
+      break;
   }
 }

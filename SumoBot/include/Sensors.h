@@ -1,6 +1,8 @@
 #ifndef SENSORS_H
 #define SENSORS_H
 #include <Arduino.h>
+#include <TFT_eSPI.h>
+#include <Preferences.h>
 
 // Pins may need to be changed
 #define LEFT_TRIGGER			18
@@ -17,11 +19,13 @@
 // From my testing, 15000 us timeout limits the distance range to ~200 cm
 #define ULTRASONIC_TIMEOUT_US	15000
 
+extern Preferences botSettings; 
+
 // Lookup table
 extern int ADCLookup[16];
 
-// Global variable for debugging purposes
-extern int lineBinaryCode[4];
+// String keys
+extern const char *ADCStrings[16];
 
 typedef struct {
 	// Ultrasonic sensor distances stored to the nearest cm, -1 is OUT_OF_RANGE
@@ -37,18 +41,31 @@ typedef struct {
     int rearRight;
 } Sensors_t;
 
-
-// Pin setup
+// Setup pins and preferences (saved to flash memory).
 void initSensors();
 
-// Calculates ADC lookup table using an array of analog readings
-void recalibrateADC(int analogReadings[16]);
+// Print ADC lookup table values to TFT
+void printADCLookup(TFT_eSPI *tft, uint32_t colour);
+
+// Reset ADC lookup table to hardcoded values
+void resetADCLookup(TFT_eSPI *tft);
+
+// Initiates a 16-step recalibration of the ADC lookup table
+void recalibrateADC_GUI(TFT_eSPI *tft);
 
 // Constructor returns a pointer to sensor struct
 Sensors_t *Sensors();
 
+/**
+ * \brief	    Updates all line detector booleans using DAC.
+ * \param       sensors Pointer to Sensors_t struct.
+ */
 void detectLine(Sensors_t *sensors);
 
+/**
+ * \brief	    Poll distance in cm, alternating between left and right sensors.
+ * \param       sensors Pointer to Sensors_t struct.
+ */
 // pollDistance(sensors) to get the distance in cm
 // Alternates between updating leftCm and rightCm each call
 void pollDistance(Sensors_t *sensors);

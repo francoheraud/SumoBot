@@ -69,7 +69,6 @@ void initSensors() // Please note that the Line Detector pin must support ADC
         else 
 		    ADCLookup[i] = botSettings.getInt(ADCStrings[i]);
     }
-	Serial.begin(115200);
 }
 
 Sensors_t *Sensors() // Java-style "constructor"

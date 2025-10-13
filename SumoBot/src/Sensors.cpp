@@ -85,24 +85,24 @@ void detectLine(Sensors_t *sensors)
     }
 }
 
-void pollDistance(int side, Sensors_t *sensors)
+void pollDistance(Sensors_t *sensors)
 {
+    static int currSensor = LEFT_ULTRASONIC; // LEFT = 0, RIGHT = 1
 	double ultrasonicDistanceCm;
 	unsigned long durationMicroseconds;
 	int echoPin, triggerPin;
 	int *sensorPtr;
 
-	switch (side) {
-	case 0:
-		echoPin = LEFT_ECHO;
-		triggerPin = LEFT_TRIGGER;
-		sensorPtr = &sensors->leftCm;
-		break;
-	case 1:
-		echoPin = RIGHT_ECHO;
-		triggerPin = RIGHT_TRIGGER;
-		sensorPtr = &sensors->rightCm;
-		break;
+	switch (currSensor) {
+        case LEFT_ULTRASONIC:
+            echoPin = LEFT_ECHO;
+            triggerPin = LEFT_TRIGGER;
+            sensorPtr = &sensors->leftCm;
+            break;
+        case RIGHT_ULTRASONIC:
+            echoPin = RIGHT_ECHO;
+            triggerPin = RIGHT_TRIGGER;
+            sensorPtr = &sensors->rightCm;
 	}
 
 	// Send trigger pulse
@@ -123,4 +123,6 @@ void pollDistance(int side, Sensors_t *sensors)
     } else {
         *sensorPtr = OUT_OF_RANGE;
     }
+    // Alternate between the left and right ultrasonic sensor
+    currSensor = !currSensor;
 }

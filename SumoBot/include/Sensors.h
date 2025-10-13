@@ -49,8 +49,8 @@ Sensors_t *Sensors();
 
 void detectLine(Sensors_t *sensors);
 
-// pollDistance(LEFT_ULTRASONIC, sensors) to get the left distance in cm
-// pollDistance(RIGHT_ULTRASONIC, sensors) to get the right distance in cm
-void pollDistance(int side, Sensors_t *sensors);
+// pollDistance(sensors) to get the distance in cm
+// Alternates between updating leftCm and rightCm each call
+void pollDistance(Sensors_t *sensors);
 
 #endif

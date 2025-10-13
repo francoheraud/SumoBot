@@ -7,7 +7,7 @@
 int lineBinaryCode[4] = {0};
 
 // Convert between analog voltage reading and binary codes 0000 to 1111
-// (topLeft, topRight, bottomLeft, bottomRight): 0 = WHITE, 1 = BLACK
+// (frontLeft, frontRight, rearLeft, rearRight): 0 = WHITE, 1 = BLACK
 int ADCLookup[16] = {
     1499, // 0000
     1599, // 0001
@@ -58,10 +58,10 @@ Sensors_t *Sensors()
 	ptr->rightCm = OUT_OF_RANGE;
 
 	ptr->analogReading = 4095;
-	ptr->topLeft = 1;
-	ptr->topRight = 1;
-	ptr->bottomLeft = 1;
-	ptr->bottomRight = 1;
+	ptr->frontLeft = 0;
+	ptr->frontRight = 0;
+	ptr->rearLeft = 0;
+	ptr->rearRight = 0;
 	return ptr;
 }
 
@@ -69,7 +69,7 @@ void detectLine(Sensors_t *sensors)
 {
     int analogValue = analogRead(LINEDETECTOR_DAC);
 	sensors->analogReading = analogValue;
-	int *ptrs[4] = {&sensors->bottomRight, &sensors->bottomLeft, &sensors->topRight, &sensors->topLeft};
+	int *ptrs[4] = {&sensors->rearRight, &sensors->rearLeft, &sensors->frontRight, &sensors->frontLeft};
     int encoding = 16; // Defaults to '1111'
     for (int i = 0; i < 16; i++) {
         if (analogValue < ADCLookup[i]) {

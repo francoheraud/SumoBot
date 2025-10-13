@@ -29,12 +29,12 @@ typedef struct {
 	int rightCm;
 
 	// Line detector booleans: 0 = WHITE, 1 = BLACK 
-	// Should be interpreted as (Is this corner of the SumoBot within the arena?)
+	// 1 (BLACK) indicates a corner has gone over the line
     int analogReading;
-    int topLeft;
-    int topRight;
-    int bottomLeft;
-    int bottomRight;
+    int frontLeft;
+    int frontRight;
+    int rearLeft;
+    int rearRight;
 } Sensors_t;
 
 

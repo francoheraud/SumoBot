@@ -29,6 +29,7 @@ enum menuOption {
 
 void userSelectFunction(TFT_eSPI *tft, Sensors_t *s, Motor_t *m);
 
-
+// Delays main loop by (seconds+0.5) seconds
+void competitionCountdownTimer(TFT_eSPI *tft, int seconds = 3);
 
 #endif

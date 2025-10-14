@@ -81,6 +81,24 @@ void userSelectFunction(TFT_eSPI *tft, Sensors_t *s, Motor_t *mot)
       userSelectFunction(tft, s, mot);
       break;
     case (COMPETITION):
+      competitionCountdownTimer(tft, 3);
       break;
   }
+}
+
+void competitionCountdownTimer(TFT_eSPI *tft, int seconds)
+{
+  tft->setTextSize(7);
+  tft->setTextFont(2);
+  tft->setTextDatum(CC_DATUM);
+  while (seconds > 0) {
+    tft->drawNumber(seconds, 170, 85);
+    seconds -= 1;
+    delay(1000);
+  }
+  tft->drawString("GO", 170, 85);
+  delay(500);
+  tft->setTextSize(3);
+  tft->setTextDatum(TL_DATUM);
+  tft->fillScreen(TFT_BLACK);
 }

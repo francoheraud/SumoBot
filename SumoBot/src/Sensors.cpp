@@ -295,7 +295,7 @@ void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)
             tft->drawNumber(*binaryPtrs[k], 290-270*(k%2), 130-50*(k/2));
         }
 
-        if (sensors->leftCm) {
+        if (sensors->leftCm > 0) {
             if (sensors->leftCm < shortRangeCm) tft->setTextColor(shortRangeColour, TFT_BLACK);
             else if (sensors->leftCm < mediumRangeCm) tft->setTextColor(mediumRangeColour, TFT_BLACK);
             else if (sensors->leftCm < longRangeCm) tft->setTextColor(longRangeColour, TFT_BLACK);
@@ -308,7 +308,7 @@ void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)
         }
         tft->drawString(distancePrintout, 125, 15);
 
-        if (sensors->rightCm) {
+        if (sensors->rightCm > 0) {
             if (sensors->rightCm < shortRangeCm) tft->setTextColor(shortRangeColour, TFT_BLACK);
             else if (sensors->rightCm < mediumRangeCm) tft->setTextColor(mediumRangeColour, TFT_BLACK);
             else if (sensors->rightCm < longRangeCm) tft->setTextColor(longRangeColour, TFT_BLACK);

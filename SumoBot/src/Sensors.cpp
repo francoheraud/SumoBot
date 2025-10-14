@@ -182,7 +182,6 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
         next = (i+1 < 16) ? analogReadings[i+1] : 4096;
         ADCLookup[i] = (curr + next)/2;
 		botSettings.putInt(ADCStrings[i], ADCLookup[i]);
-        tft->setCursor(0, i*10);
     };
     printADCLookup(tft, TFT_GREEN);
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
@@ -223,6 +222,7 @@ void pollDistance(Sensors_t *sensors)
             sensorPtr = &sensors->leftCm;
             break;
         case RIGHT_ULTRASONIC:
+        default: // no more null pointer problems
             echoPin = RIGHT_ECHO;
             triggerPin = RIGHT_TRIGGER;
             sensorPtr = &sensors->rightCm;

@@ -139,7 +139,7 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
     tft->setTextSize(2);
 
     while (calibrationStage < 16) {
-        currL = !digitalRead(0);
+        currL = !digitalRead(14);
         currentReading = analogRead(LINEDETECTOR_DAC);
         tft->setCursor(5,10);
         tft->printf("Calibrating ADC (%d/15)", calibrationStage);
@@ -151,19 +151,20 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
             tft->setCursor(5,85);
             tft->printf("Analog reading: N/A    ");
             tft->setCursor(5,145);
-            tft->printf("Press to continue:    -->");
+            tft->printf("<-- Press to continue:    ");
         } else {
             tft->setCursor(5,85);
             tft->printf("Analog reading: %d    ", currentReading);
             tft->setCursor(5,145);
-            tft->printf("Press to record:      -->");
+            tft->printf("<-- Press to record:     ");
         }
 
-        if (prevL && !currL) {
-            analogReadings[calibrationStage] = currentReading;
+        if (!prevL && currL) {
             if (calibrationStage == 6 || calibrationStage == 9) {
+                analogReadings[calibrationStage] = analogReadings[calibrationStage-1];
                 delay(100);
             } else {
+                analogReadings[calibrationStage] = currentReading;
                 tft->setTextColor(TFT_GREEN, TFT_BLACK);
                 tft->setCursor(5,85);
                 tft->printf("Recorded value: %d      ", currentReading);
@@ -174,8 +175,11 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
         }
 
         prevL = currL;
-        delay(100);
+        delay(200);
     }
+
+    analogReadings[6] = (analogReadings[5] + analogReadings[7])/2;
+    analogReadings[9] = (analogReadings[8] + analogReadings[10])/2;
 
     tft->fillScreen(TFT_BLACK);
     tft->setTextColor(TFT_GREEN, TFT_BLACK);
@@ -184,11 +188,10 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
     for (int i = 0; i < 16; i++) {
         curr = analogReadings[i];
         next = (i+1 < 16) ? analogReadings[i+1] : 4096;
-        if (i == 6 || i == 9) ADCLookup[i] = (analogReadings[i-1] + next)/2;
-        else ADCLookup[i] = (curr + next)/2;
+        ADCLookup[i] = (curr + next)/2;
 		botSettings.putInt(ADCStrings[i], ADCLookup[i]);
         tft->setCursor(0, i*10);
-        tft->printf("%s: ADCLookup[%2d] = %d ", ADCStrings[i], i, ADCLookup[i]);
+        tft->printf("%s: %d -> ADCLookup[%2d] = %d ", ADCStrings[i], curr, i, ADCLookup[i]);
         delay(200);
     };
     tft->printf(" Done! ");
@@ -307,6 +310,8 @@ void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)
             snprintf(distancePrintout, 20, "??? cm     ");
         }
         tft->drawString(distancePrintout, 125, 15);
+
+        pollDistance(sensors);
 
         if (sensors->rightCm > 0) {
             if (sensors->rightCm < shortRangeCm) tft->setTextColor(shortRangeColour, TFT_BLACK);

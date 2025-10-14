@@ -90,7 +90,6 @@ void printADCLookup(TFT_eSPI *tft, uint32_t colour)
 {
     tft->setTextSize(1);
     tft->setTextColor(colour, TFT_BLACK);
-    tft->fillScreen(TFT_BLACK);
     for (int i = 0; i < 16; i++) {
         tft->setCursor(0, i*10);
         tft->printf("%s: ADCLookup[%2d] = %d ", ADCStrings[i], i, ADCLookup[i]);
@@ -136,13 +135,11 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
     int prevL = 0, currL = 0;
     int analogReadings[16] = {0};
 
-    tft->fillScreen(TFT_BLACK);
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
     tft->setTextSize(2);
-    tft->setRotation(3);
 
     while (calibrationStage < 16) {
-        currL = !digitalRead(14);
+        currL = !digitalRead(0);
         currentReading = analogRead(LINEDETECTOR_DAC);
         tft->setCursor(5,10);
         tft->printf("Calibrating ADC (%d/15)", calibrationStage);
@@ -154,12 +151,12 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
             tft->setCursor(5,85);
             tft->printf("Analog reading: N/A    ");
             tft->setCursor(5,145);
-            tft->printf("<- Press R to continue     ");
+            tft->printf("Press to continue:    -->");
         } else {
             tft->setCursor(5,85);
             tft->printf("Analog reading: %d    ", currentReading);
             tft->setCursor(5,145);
-            tft->printf("<- Press R to record   ");
+            tft->printf("Press to record:      -->");
         }
 
         if (prevL && !currL) {
@@ -259,4 +256,82 @@ void pollDistance(Sensors_t *sensors)
     }
     // Alternate between the left and right ultrasonic sensor
     currSensor = !currSensor;
+}
+
+void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)
+{
+    tft->setTextSize(2);
+    static char buffer[50];
+    static char distancePrintout[30];
+
+    const static int maximumRangeCm = 100;
+    const static int longRangeCm = 60;
+    const static int mediumRangeCm = 40;
+    const static int shortRangeCm = 20;
+
+    const static uint32_t outOfRangeColour = TFT_DARKGREY;
+    const static uint32_t maximumRangeColour = TFT_WHITE;
+    const static uint32_t longRangeColour = TFT_GREEN;
+    const static uint32_t mediumRangeColour = TFT_GOLD;
+    const static uint32_t shortRangeColour = TFT_RED;
+    static unsigned long lastUpdateTime = millis();
+
+    while (true) {
+        // Determine line values from analog pin (R-2R DAC)
+        pollDistance(sensors);
+        detectLine(sensors);
+        tft->setTextColor(TFT_SILVER, TFT_BLACK);
+        int encoding = (sensors->frontLeft << 3)+(sensors->frontRight << 2)+(sensors->rearLeft << 1)+(sensors->rearRight);
+        sprintf(buffer, "  ADC: %d -> %d ", sensors->analogReading, encoding);
+        tft->setTextDatum(CC_DATUM);
+        tft->drawString(buffer, 160, 105);
+        tft->setTextDatum(TL_DATUM);
+
+        int *binaryPtrs[4] = {&sensors->rearRight, &sensors->rearLeft, &sensors->frontRight, &sensors->frontLeft};
+
+        for (int k = 3; k >= 0; k--) {
+            if (*binaryPtrs[k]) tft->setTextColor(TFT_RED, TFT_BLACK);
+            else tft->setTextColor(TFT_WHITE, TFT_BLACK);
+            tft->drawNumber(*binaryPtrs[k], 290-270*(k%2), 130-50*(k/2));
+        }
+
+        if (sensors->leftCm) {
+            if (sensors->leftCm < shortRangeCm) tft->setTextColor(shortRangeColour, TFT_BLACK);
+            else if (sensors->leftCm < mediumRangeCm) tft->setTextColor(mediumRangeColour, TFT_BLACK);
+            else if (sensors->leftCm < longRangeCm) tft->setTextColor(longRangeColour, TFT_BLACK);
+            else if (sensors->leftCm < maximumRangeCm) tft->setTextColor(maximumRangeColour, TFT_BLACK);
+            else tft->setTextColor(outOfRangeColour, TFT_BLACK);
+            snprintf(distancePrintout, 20, "%d cm     ", sensors->leftCm);
+        } else {
+            tft->setTextColor(outOfRangeColour, TFT_BLACK);
+            snprintf(distancePrintout, 20, "??? cm     ");
+        }
+        tft->drawString(distancePrintout, 125, 15);
+
+        if (sensors->rightCm) {
+            if (sensors->rightCm < shortRangeCm) tft->setTextColor(shortRangeColour, TFT_BLACK);
+            else if (sensors->rightCm < mediumRangeCm) tft->setTextColor(mediumRangeColour, TFT_BLACK);
+            else if (sensors->rightCm < longRangeCm) tft->setTextColor(longRangeColour, TFT_BLACK);
+            else if (sensors->rightCm < maximumRangeCm) tft->setTextColor(maximumRangeColour, TFT_BLACK);
+            else tft->setTextColor(outOfRangeColour, TFT_BLACK);
+            snprintf(distancePrintout, 20, "%d cm     ", sensors->rightCm);
+        } else {
+            tft->setTextColor(outOfRangeColour, TFT_BLACK);
+            snprintf(distancePrintout, 20, "??? cm     ");
+        }
+        tft->drawString(distancePrintout, 125, 45);
+
+        int deviation = abs(sensors->leftCm - sensors->rightCm);
+
+        if (sensors->leftCm > 0 && sensors->rightCm > 0 && deviation < 5) {
+            tft->setTextColor(TFT_GOLD, TFT_BLACK);
+            tft->drawString("OBSTACLE", 20, 15);
+            tft->drawString("DETECTED", 20, 45);
+        } else {
+            tft->setTextColor(TFT_WHITE, TFT_BLACK);
+            tft->drawString("Left  : ", 20, 15);
+            tft->drawString("Right : ", 20, 45);
+        }
+        delay(250);
+    }
 }

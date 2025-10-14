@@ -58,7 +58,7 @@ void resetADCLookup(TFT_eSPI *tft);
 void recalibrateADC_GUI(TFT_eSPI *tft);
 
 // Run in an infinite loop
-void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors);
+void sensorsDemo(TFT_eSPI *tft, Sensors_t *sensors);
 
 /**
  * \brief	    Updates all line detector booleans using DAC.

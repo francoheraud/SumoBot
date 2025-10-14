@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include "Sensors.h"
+#include "Motor.h"
 
 #define MENU_X_DATUM    20
 #define MENU_Y_DATUM    20
@@ -18,15 +19,15 @@
 #define BACKGROUND_COLOUR       TFT_BLACK
 
 enum menuOption {
+  SENSORS,
+  MOTORS,
+  COMPETITION,
   PRINT,
   CALIBRATE,
   RESET,
-  MOTORS,
-  SENSORS,
-  COMPETITION,
 };
 
-void userSelectFunction(TFT_eSPI *tft, Sensors_t *s);
+void userSelectFunction(TFT_eSPI *tft, Sensors_t *s, Motor_t *m);
 
 
 

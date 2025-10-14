@@ -41,21 +41,17 @@ Direction edgeAvoidDirection = ROTATE_CW;
 unsigned long lastPIUpdate = 0;
 
 void setup() {
-    Serial.begin(115200);
-    pinMode(0, INPUT);
-    pinMode(14, INPUT);
-    Serial.println("pin setup done");
+    pinMode(LEFT_BUTTON, INPUT);
+    pinMode(RIGHT_BUTTON, INPUT);
     initMotors();
-    Serial.println("init motors done");
     initSensors();
-    Serial.println("init sensors done");
     
     tft.init();
     tft.setTextSize(1);
 	tft.setRotation(3);
 	tft.fillScreen(TFT_BLACK);
 	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    userSelectFunction(&tft, &sensor);
+    userSelectFunction(&tft, &sensor, &motor);
     motor.direction = ROTATE_CCW;
 }
 

@@ -3,19 +3,20 @@
 // Rework: Franco Heraud (23602168)
 #include "Startup.h"
 #include "Sensors.h"
+#include "Motor.h"
 
 char robotModeDescriptions[6][BUFFER_CHARS] = {
-  "0. PRINT ADC LOOKUP TABLE",
-  "1. CALIBRATE LINE DETECTOR ADC",
-  "2. RESET ALL SETTINGS",
-  "3. TEST MOTORS",
-  "4. TEST SENSORS",
-  "5. START COMPETITION"
+  "0. SENSORS DEMO",
+  "1. MOTORS DEMO",
+  "2. START COMPETITION",
+  "3. PRINT ADC LOOKUP TABLE",
+  "4. CALIBRATE LINE DETECTOR ADC",
+  "5. RESET ALL SETTINGS",
 };
 
 menuOption currentMenu;
 
-void userSelectFunction(TFT_eSPI *tft, Sensors_t *s)
+void userSelectFunction(TFT_eSPI *tft, Sensors_t *s, Motor_t *mot)
 {
   int prevLeft = 0, prevRight = 0;
   int currLeft = 0, currRight = 0;
@@ -64,20 +65,20 @@ void userSelectFunction(TFT_eSPI *tft, Sensors_t *s)
   switch (currentMenu) {
     case (CALIBRATE):
       recalibrateADC_GUI(tft);
-      userSelectFunction(tft, s);
+      userSelectFunction(tft, s, mot);
       break;
     case (RESET):
       resetADCLookup(tft);
-      userSelectFunction(tft, s);
+      userSelectFunction(tft, s, mot);
       break;
     case (MOTORS):
       break;
     case (SENSORS):
-      sensorDemo(tft, s);
+      sensorsDemo(tft, s);
       break;
     case (PRINT):
       printADCLookup(tft, TFT_SILVER);
-      userSelectFunction(tft, s);
+      userSelectFunction(tft, s, mot);
       break;
     case (COMPETITION):
       break;

@@ -249,7 +249,7 @@ void pollDistance(Sensors_t *sensors)
     return;
 }
 
-void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)
+void sensorsDemo(TFT_eSPI *tft, Sensors_t *sensors)
 {
     tft->setTextSize(2);
     static char buffer[50];

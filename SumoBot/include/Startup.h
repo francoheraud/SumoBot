@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include "Sensors.h"
 
 #define MENU_X_DATUM    20
 #define MENU_Y_DATUM    20
@@ -25,7 +26,7 @@ enum menuOption {
   COMPETITION
 };
 
-void userSelectFunction(TFT_eSPI *tft);
+void userSelectFunction(TFT_eSPI *tft, Sensors_t *s);
 
 
 

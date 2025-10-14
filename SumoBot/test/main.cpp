@@ -9,7 +9,7 @@
 
 TFT_eSPI tft = TFT_eSPI();
 
-Sensors_t *sensor_p;
+Sensors_t sensor;
 Motor_t motor;
 
 #define BUF_SIZE                    10
@@ -41,17 +41,24 @@ Direction edgeAvoidDirection = ROTATE_CW;
 unsigned long lastPIUpdate = 0;
 
 void setup() {
+    Serial.begin(115200);
+    pinMode(0, INPUT);
+    pinMode(14, INPUT);
+    Serial.println("pin setup done");
     initMotors();
+    Serial.println("init motors done");
     initSensors();
-    sensor_p = Sensors();
+    Serial.println("init sensors done");
     
     tft.init();
-	tft.setRotation(1);
+    tft.setTextSize(1);
+	tft.setRotation(3);
 	tft.fillScreen(TFT_BLACK);
 	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    userSelectFunction(&tft);
+    userSelectFunction(&tft, &sensor);
     motor.direction = ROTATE_CCW;
 }
+
 
 static int getAverageDistance() {
     int sum;
@@ -75,15 +82,15 @@ static bool detectOpponent() {
 }
 
 static bool edgeDetected() {
-    return sensor_p->frontLeft || sensor_p->frontRight || 
-    sensor_p->rearLeft || sensor_p->rearRight;
+    return sensor.frontLeft || sensor.frontRight || 
+    sensor.rearLeft || sensor.rearRight;
 }
 
 
 static Direction getEdgeAvoidDirection() {
-    if (sensor_p->frontLeft || sensor_p->frontRight) return REVERSE;
-    if (sensor_p->rearLeft || sensor_p->rearRight) return FORWARD;
-    if (sensor_p->frontLeft || sensor_p->rearLeft) return ROTATE_CW; 
+    if (sensor.frontLeft || sensor.frontRight) return REVERSE;
+    if (sensor.rearLeft || sensor.rearRight) return FORWARD;
+    if (sensor.frontLeft || sensor.rearLeft) return ROTATE_CW; 
     else return ROTATE_CCW;  
 }
 
@@ -92,15 +99,16 @@ static Direction getEdgeAvoidDirection() {
 // TODO: update to PID?
 static void updateMotorControl() {
     static float velA = 0.0f, velB = 0.0f;
-    if (millis() - lastPIUpdate < PI_UPDATE_INTERVAL_MS) {
+    static unsigned long elapsedMs;
+    if (elapsedMs = millis() - lastPIUpdate < PI_UPDATE_INTERVAL_MS) {
         return;
     }
     
     static int encoderCountOldA = 0;
     static int encoderCountOldB = 0;
     
-    velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
-    velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
+    velA = 1000.0f * (encoderCountA - encoderCountOldA) / elapsedMs;
+    velB = 1000.0f * (encoderCountB - encoderCountOldB) / elapsedMs;
     
     updatePIController(&motor, velA, velB);
     
@@ -111,8 +119,8 @@ static void updateMotorControl() {
 
 
 static void chaseMode() {
-    bool opponentLeft = (sensor_p->leftCm < sensor_p->rightCm - TRACK_OPPONENT_THRESHOLD);
-    bool opponentRight = (sensor_p->rightCm < sensor_p->leftCm - TRACK_OPPONENT_THRESHOLD);
+    bool opponentLeft = (sensor.leftCm < sensor.rightCm - TRACK_OPPONENT_THRESHOLD);
+    bool opponentRight = (sensor.rightCm < sensor.leftCm - TRACK_OPPONENT_THRESHOLD);
 
     if (opponentLeft) motor.direction = LEFT;
     if (opponentRight) motor.direction = RIGHT;
@@ -122,11 +130,10 @@ static void chaseMode() {
 
 
 void loop() {
-    pollDistance(sensor_p);
-    pollDistance(sensor_p);
-    detectLine(sensor_p);
+    pollDistance(&sensor);
+    detectLine(&sensor);
     
-    int avgDistance = (sensor_p->leftCm + sensor_p->rightCm) / 2;
+    int avgDistance = (sensor.leftCm + sensor.rightCm) / 2;
     updateDistanceBuf(avgDistance);
     
     switch (currentState) {
@@ -158,7 +165,7 @@ void loop() {
             }
             
 
-            if (sensor_p->leftCm == OUT_OF_RANGE && sensor_p->rightCm == OUT_OF_RANGE) {
+            if (sensor.leftCm == OUT_OF_RANGE && sensor.rightCm == OUT_OF_RANGE) {
                 currentState = SEARCHING;
             }
             break;

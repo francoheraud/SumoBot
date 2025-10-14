@@ -44,6 +44,9 @@ typedef struct {
 // Setup pins and preferences (saved to flash memory).
 void initSensors();
 
+// Constructor returns a pointer to sensor struct
+Sensors_t *Sensors();
+
 // Print ADC lookup table values to TFT
 void printADCLookup(TFT_eSPI *tft, uint32_t colour);
 
@@ -53,8 +56,8 @@ void resetADCLookup(TFT_eSPI *tft);
 // Initiates a 16-step recalibration of the ADC lookup table
 void recalibrateADC_GUI(TFT_eSPI *tft);
 
-// Constructor returns a pointer to sensor struct
-Sensors_t *Sensors();
+// Run in an infinite loop
+void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors);
 
 /**
  * \brief	    Updates all line detector booleans using DAC.

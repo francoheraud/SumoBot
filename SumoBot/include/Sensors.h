@@ -23,6 +23,7 @@ extern Preferences botSettings;
 
 // Lookup table
 extern int ADCLookup[16];
+extern int ADCLookupDefaults[16];
 
 // String keys
 extern const char *ADCStrings[16];
@@ -44,8 +45,8 @@ typedef struct {
 // Setup pins and preferences (saved to flash memory).
 void initSensors();
 
-// Constructor returns a pointer to sensor struct
-Sensors_t *Sensors();
+// Useful function for GUI
+void waitForButtonPress();
 
 // Print ADC lookup table values to TFT
 void printADCLookup(TFT_eSPI *tft, uint32_t colour);

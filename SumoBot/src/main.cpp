@@ -1,112 +1,184 @@
-
- 
- 
 #include "Motor.h"
+#include "Sensors.h"
 #include "Startup.h"
- 
-Motor_t motor;
+
+/**
+ * Sumo Bot Competition Code
+ * By Franco Heraud and ya boy Chat
+ */
+
 TFT_eSPI tft = TFT_eSPI();
- 
-void setup() {
-  Serial.begin(115200);
-  initMotors();
-  Serial.println("set up complete");
-  tft.init();
-  tft.println("Setup Complete!"); 
-}
- 
 
-static void updateController(void) {
-  static unsigned long lastTime = millis();
-  static int encoderCountOldA = 0, encoderCountOldB = 0;
-  
-  if (millis() - lastTime > 500) {
-    // x100 added due to velocity being a bit low
-    float velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
-    float velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
+Sensors_t sensor;
+Motor_t motor;
 
-    //Serial.printf("---------------------\n");
-    //Serial.printf("EncA: %d | velA: %.2f | rmot: %d \n", encoderCountA, velA, rMotNewA);
-    Serial.printf("%.2f, %.2f\n", motor.desiredSpeedA, velA);
+#define BUF_SIZE                    10
+#define DETECTION_THRESHOLD         30
+#define TRACK_OPPONENT_THRESHOLD    30
+#define EDGE_BACKUP_TIME            300 // ms
 
-    updatePIController(&motor, velA, velB);
-    
-    encoderCountOldA = encoderCountA;
-    encoderCountOldB = encoderCountB;
-    lastTime = millis();
-  }
-}
+bool startupSequence = true, opponentDetected = false, startupTurning = true;
 
+const int detectionThreshold = 30; // obv change if needed
+const int trackOpponentThreshold = 40;
+int distanceBuf[BUF_SIZE] = {0};
+int bufIdx = 0;
+
+
+int avePrevFutValue, currIdx, prevIdx, futIdx;
+bool bufferFilled = false;
+
+
+enum RobotState {
+    SEARCHING,
+    CHASING,
+    AVOIDING_EDGE
+};
+
+RobotState currentState = SEARCHING;
+unsigned long edgeAvoidStartTime = 0;
+Direction edgeAvoidDirection = ROTATE_CW;
 unsigned long lastPIUpdate = 0;
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(0, INPUT);
+    pinMode(14, INPUT);
+    Serial.println("pin setup done");
+    initMotors();
+    Serial.println("init motors done");
+    initSensors();
+    Serial.println("init sensors done");
+    
+    tft.init();
+    tft.setTextSize(1);
+	tft.setRotation(3);
+	tft.fillScreen(TFT_BLACK);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    userSelectFunction(&tft, &sensor);
+    motor.direction = ROTATE_CCW;
+}
+
+
+static int getAverageDistance() {
+    int sum;
+    for (int i = 0; i < BUF_SIZE; i++) 
+        sum += distanceBuf[i];
+    return sum / BUF_SIZE;   
+}
+
+
+static void updateDistanceBuf(int distance) {
+    distanceBuf[bufIdx] = distance;
+    bufIdx = (bufIdx + 1) % BUF_SIZE;
+    if (bufIdx == 0) bufferFilled = true;
+}
+
+static bool detectOpponent() {
+    if (!bufferFilled) return false;
+    int aveDistance = getAverageDistance();
+    int currDistance = distanceBuf[(bufIdx - 1 + BUF_SIZE) % BUF_SIZE];
+    return (aveDistance - currDistance) > DETECTION_THRESHOLD;
+}
+
+static bool edgeDetected() {
+    return sensor.frontLeft || sensor.frontRight || 
+    sensor.rearLeft || sensor.rearRight;
+}
+
+
+static Direction getEdgeAvoidDirection() {
+    if (sensor.frontLeft || sensor.frontRight) return REVERSE;
+    if (sensor.rearLeft || sensor.rearRight) return FORWARD;
+    if (sensor.frontLeft || sensor.rearLeft) return ROTATE_CW; 
+    else return ROTATE_CCW;  
+}
+
+
+// velocity updates arent in sync? test plz!
+// TODO: update to PID?
 static void updateMotorControl() {
     static float velA = 0.0f, velB = 0.0f;
-    if (millis() - lastPIUpdate < 500) {
+    static unsigned long elapsedMs;
+    if (elapsedMs = millis() - lastPIUpdate < PI_UPDATE_INTERVAL_MS) {
         return;
     }
     
     static int encoderCountOldA = 0;
     static int encoderCountOldB = 0;
     
-    velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
-    velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
+    velA = 1000.0f * (encoderCountA - encoderCountOldA) / elapsedMs;
+    velB = 1000.0f * (encoderCountB - encoderCountOldB) / elapsedMs;
     
     updatePIController(&motor, velA, velB);
-    Serial.printf("velDesired = %.2f | velActual = %.2f | pwm = %d\n",
-                  motor.desiredSpeedA, velA, motor.pwmA);
     
     encoderCountOldA = encoderCountA;
     encoderCountOldB = encoderCountB;
     lastPIUpdate = millis();
 }
 
-void loop() {
-  static unsigned long lastTime = millis();
-  static int encoderCountOldA = 0, encoderCountOldB = 0;
 
-  motor.direction = FORWARD;
-  move(&motor);
+static void chaseMode() {
+    bool opponentLeft = (sensor.leftCm < sensor.rightCm - TRACK_OPPONENT_THRESHOLD);
+    bool opponentRight = (sensor.rightCm < sensor.leftCm - TRACK_OPPONENT_THRESHOLD);
 
-
-  
-  if (millis() - lastTime > 500) {
-    // x100 added due to velocity being a bit low
-    float velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
-    float velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
-
-    //Serial.printf("---------------------\n");
-    //Serial.printf("EncA: %d | velA: %.2f | rmot: %d \n", encoderCountA, velA, rMotNewA);
-    Serial.printf("%.2f, %.2f\n", motor.desiredSpeedA, velA);
-
-    updatePIController(&motor, velA, velB);
-    
-    encoderCountOldA = encoderCountA;
-    encoderCountOldB = encoderCountB;
-    lastTime = millis();
-  }
-}
-
-
-
-// integrating the PI Controller and some demo functions for moving the sumobot
-// forward -> reverse -> left -> right -> CW -> CCW
-/*
-void loop() {
-  static int demoState = 0;
-  static unsigned long last = millis();
-
-  updateController();  // continuously update PI loop
-
-  if (millis() - last > 3000) {
-    stopMotors();
-    delay(500);  // small pause between moves
-
-    demoState++;
-    if (demoState > 5)
-      demoState = 0;  // loop back to start
-
-    motor.direction = (Direction)demoState;
+    if (opponentLeft) motor.direction = LEFT;
+    if (opponentRight) motor.direction = RIGHT;
+    else motor.direction = FORWARD;
     move(&motor);
-    last = millis();
-  }
 }
-  */
+
+
+void loop() {
+    pollDistance(&sensor);
+    detectLine(&sensor);
+    
+    int avgDistance = (sensor.leftCm + sensor.rightCm) / 2;
+    updateDistanceBuf(avgDistance);
+    
+    switch (currentState) {
+        case SEARCHING:
+            motor.direction = ROTATE_CCW;
+            
+            if (detectOpponent()) {
+                currentState = CHASING;
+            }
+            
+            if (edgeDetected()) {
+                currentState = AVOIDING_EDGE;
+                edgeAvoidStartTime = millis();
+                edgeAvoidDirection = getEdgeAvoidDirection();
+                stopMotors();
+                delay(50);  
+            }
+            break;
+            
+        case CHASING:
+            chaseMode();
+            
+            if (edgeDetected()) {
+                currentState = AVOIDING_EDGE;
+                edgeAvoidStartTime = millis();
+                edgeAvoidDirection = getEdgeAvoidDirection();
+                stopMotors();
+                delay(50);
+            }
+            
+
+            if (sensor.leftCm == OUT_OF_RANGE && sensor.rightCm == OUT_OF_RANGE) {
+                currentState = SEARCHING;
+            }
+            break;
+            
+        case AVOIDING_EDGE:
+            motor.direction = edgeAvoidDirection;
+            
+            if (millis() - edgeAvoidStartTime > EDGE_BACKUP_TIME) {
+                currentState = SEARCHING;  
+            }
+            break;
+    }
+    
+    move(&motor);
+    updateMotorControl();
+}

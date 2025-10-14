@@ -23,7 +23,7 @@ enum menuOption {
   RESET,
   MOTORS,
   SENSORS,
-  COMPETITION
+  COMPETITION,
 };
 
 void userSelectFunction(TFT_eSPI *tft, Sensors_t *s);

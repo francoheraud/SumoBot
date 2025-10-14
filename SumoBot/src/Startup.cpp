@@ -32,11 +32,11 @@ void userSelectFunction(TFT_eSPI *tft, Sensors_t *s)
     currRight = !digitalRead(RIGHT_BUTTON);
 
     if (prevLeft && !currLeft) {
-      currChoice = (currChoice + 1) % 6; // Must update this whenever we add/remove robotModes
-      lastUpdateTime = millis();
-    } else if (prevRight && !currRight) {
       tft->setTextFont(0);
       startOperation = true;
+    } else if (prevRight && !currRight) {
+      currChoice = (currChoice + 1) % 6; // Must update this whenever we add/remove robotModes
+      lastUpdateTime = millis();
     }
 
     if (prevChoice != currChoice) {

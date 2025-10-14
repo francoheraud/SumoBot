@@ -5,30 +5,33 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <Preferences.h>
+#include "Startup.h"
 
 Preferences botSettings; 
 
 // Convert between analog voltage reading and binary codes 0000 to 1111
 // (frontLeft, frontRight, rearLeft, rearRight): 0 = WHITE, 1 = BLACK
-int ADCLookup[16] = {
-    1499, // 0000
-    1599, // 0001
-    1799, // 0010
-    1899, // 0011
+int ADCLookup[16];
 
-    2049, // 0100
-    2199, // 0101
-    2299, // 0110
-    2499, // 0111
+int ADCLookupDefaults[16] = {
+    1384, // 0000
+    1523, // 0001
+    1672, // 0010
+    1821, // 0011
 
-    2699, // 1000
-    2839, // 1001
-    2999, // 1010
-    3149, // 1011
+    1960, // 0100
+    2068, // 0101
+    2148, // 0110
+    2336, // 0111
 
-    3349, // 1100
-    3499, // 1101
-    3799, // 1110
+    2559, // 1000
+    2708, // 1001
+    2863, // 1010
+    3023, // 1011
+
+    3191, // 1100
+    3382, // 1101
+    3597, // 1110
     4096, // 1111
 };
 
@@ -64,25 +67,26 @@ void initSensors() // Please note that the Line Detector pin must support ADC
 
 	botSettings.begin("botSettings", false);
     for (int i = 0; i < 16; i++) {
-	    if (!botSettings.isKey(ADCStrings[i]))
+	    if (!botSettings.isKey(ADCStrings[i])) {
+            ADCLookup[i] = ADCLookupDefaults[i];
 		    botSettings.putInt(ADCStrings[i], ADCLookup[i]);
-        else 
+        } else {
 		    ADCLookup[i] = botSettings.getInt(ADCStrings[i]);
+        }
     }
 }
 
-Sensors_t *Sensors() // Java-style "constructor"
+void waitForButtonPress()
 {
-	Sensors_t *ptr = (Sensors_t *)malloc(sizeof(Sensors_t));
-	ptr->leftCm = OUT_OF_RANGE;
-	ptr->rightCm = OUT_OF_RANGE;
-
-	ptr->analogReading = 0;
-	ptr->frontLeft = 0;
-	ptr->frontRight = 0;
-	ptr->rearLeft = 0;
-	ptr->rearRight = 0;
-	return ptr;
+    int currLeft, currRight, prevLeft, prevRight;
+    while (true) {
+        currLeft = !digitalRead(LEFT_BUTTON);
+        currRight = !digitalRead(RIGHT_BUTTON);
+        if (prevLeft && !currLeft || prevRight && !currRight) break;
+        prevLeft = currLeft;
+        prevRight = currRight;
+    delay(100);
+    }
 }
 
 // Display ADCLookup values
@@ -95,7 +99,7 @@ void printADCLookup(TFT_eSPI *tft, uint32_t colour)
         tft->printf("%s: ADCLookup[%2d] = %d ", ADCStrings[i], i, ADCLookup[i]);
         delay(100);
     };
-    delay(4000);
+    waitForButtonPress();
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
     tft->fillScreen(TFT_BLACK);
 }
@@ -103,27 +107,10 @@ void printADCLookup(TFT_eSPI *tft, uint32_t colour)
 // Resets ADC lookup table and flash memory to hardcoded values
 void resetADCLookup(TFT_eSPI *tft)
 {
-    ADCLookup[0] = 1499; // 0000
-    ADCLookup[1] = 1599; // 0001
-    ADCLookup[2] = 1799; // 0010
-    ADCLookup[3] = 1899; // 0011
-
-    ADCLookup[4] = 2049; // 0100
-    ADCLookup[5] = 2199; // 0101
-    ADCLookup[6] = 2299; // 0110
-    ADCLookup[7] = 2499; // 0111
-
-    ADCLookup[8] = 2699; // 1000
-    ADCLookup[9] = 2839; // 1001
-    ADCLookup[10] = 2999; // 1010
-    ADCLookup[11] = 3149; // 1011
-
-    ADCLookup[12] = 3349; // 1100
-    ADCLookup[13] = 3499; // 1101
-    ADCLookup[14] = 3799; // 1110
-    ADCLookup[15] = 4096; // 1111
-
-    for (int i = 0; i < 16; i++) botSettings.putInt(ADCStrings[i], ADCLookup[i]);
+    for (int i = 0; i < 16; i++) {
+        ADCLookup[i] = ADCLookupDefaults[i];
+        botSettings.putInt(ADCStrings[i], ADCLookup[i]);
+    }
 
     printADCLookup(tft, TFT_RED);
 }
@@ -132,14 +119,14 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
 {
     int calibrationStage = 0;
     int currentReading = 0;
-    int prevL = 0, currL = 0;
+    int prevLeft = 0, currLeft = 0;
     int analogReadings[16] = {0};
 
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
     tft->setTextSize(2);
 
     while (calibrationStage < 16) {
-        currL = !digitalRead(14);
+        currLeft = !digitalRead(RIGHT_BUTTON);
         currentReading = analogRead(LINEDETECTOR_DAC);
         tft->setCursor(5,10);
         tft->printf("Calibrating ADC (%d/15)", calibrationStage);
@@ -159,7 +146,7 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
             tft->printf("<-- Press to record:     ");
         }
 
-        if (!prevL && currL) {
+        if (!prevLeft && currLeft) {
             if (calibrationStage == 6 || calibrationStage == 9) {
                 analogReadings[calibrationStage] = analogReadings[calibrationStage-1];
                 delay(100);
@@ -174,7 +161,7 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
             calibrationStage++;
         }
 
-        prevL = currL;
+        prevLeft = currLeft;
         delay(200);
     }
 
@@ -195,7 +182,7 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
         delay(200);
     };
     tft->printf(" Done! ");
-    delay(4000);
+    waitForButtonPress();
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
 	tft->fillScreen(TFT_BLACK);
 }
@@ -259,6 +246,7 @@ void pollDistance(Sensors_t *sensors)
     }
     // Alternate between the left and right ultrasonic sensor
     currSensor = !currSensor;
+    return;
 }
 
 void sensorDemo(TFT_eSPI *tft, Sensors_t *sensors)

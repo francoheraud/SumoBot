@@ -119,15 +119,17 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
 {
     int calibrationStage = 0;
     int currentReading = 0;
-    int prevLeft = 0, currLeft = 0;
+    int prevLeft = 0, prevRight = 0, currLeft = 0, currRight = 0;
     int analogReadings[16] = {0};
 
-    tft->setTextColor(TFT_WHITE, TFT_BLACK);
     tft->setTextSize(2);
 
     while (calibrationStage < 16) {
-        currLeft = !digitalRead(RIGHT_BUTTON);
+        currLeft = !digitalRead(LEFT_BUTTON);
+        currRight = !digitalRead(RIGHT_BUTTON);
         currentReading = analogRead(LINEDETECTOR_DAC);
+        tft->setTextColor(TFT_WHITE, TFT_BLACK);
+
         tft->setCursor(5,10);
         tft->printf("Calibrating ADC (%d/15)", calibrationStage);
 
@@ -138,15 +140,17 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
             tft->setCursor(5,85);
             tft->printf("Analog reading: N/A    ");
             tft->setCursor(5,145);
-            tft->printf("<-- Press to continue:    ");
+            tft->setTextColor(TFT_DARKGREY, TFT_BLACK);
+            tft->printf("Press any button...       ");
         } else {
             tft->setCursor(5,85);
             tft->printf("Analog reading: %d    ", currentReading);
             tft->setCursor(5,145);
-            tft->printf("<-- Press to record:     ");
+            tft->setTextColor(TFT_DARKGREY, TFT_BLACK);
+            tft->printf("Press any button to record");
         }
 
-        if (!prevLeft && currLeft) {
+        if (!prevLeft && currLeft || !prevRight && currRight) {
             if (calibrationStage == 6 || calibrationStage == 9) {
                 analogReadings[calibrationStage] = analogReadings[calibrationStage-1];
                 delay(100);
@@ -162,7 +166,8 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
         }
 
         prevLeft = currLeft;
-        delay(200);
+        prevRight = currRight;
+        delay(100);
     }
 
     analogReadings[6] = (analogReadings[5] + analogReadings[7])/2;
@@ -178,11 +183,8 @@ void recalibrateADC_GUI(TFT_eSPI *tft)
         ADCLookup[i] = (curr + next)/2;
 		botSettings.putInt(ADCStrings[i], ADCLookup[i]);
         tft->setCursor(0, i*10);
-        tft->printf("%s: %d -> ADCLookup[%2d] = %d ", ADCStrings[i], curr, i, ADCLookup[i]);
-        delay(200);
     };
-    tft->printf(" Done! ");
-    waitForButtonPress();
+    printADCLookup(tft, TFT_GREEN);
     tft->setTextColor(TFT_WHITE, TFT_BLACK);
 	tft->fillScreen(TFT_BLACK);
 }

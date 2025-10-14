@@ -55,8 +55,8 @@ void move(Motor_t *motor) {
         case FORWARD:
             digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
             digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
-            motor->desiredSpeedA = maxTickSpeed;
-            motor->desiredSpeedB = maxTickSpeed;
+            motor->desiredSpeedA = maxTickSpeed * 0.5f;
+            motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
 
         case REVERSE:
@@ -132,3 +132,5 @@ void updatePIController(Motor_t *motor, float velA, float velB) {
     ledcWrite(PWM_CHANNEL_A, rMotNewA);
     ledcWrite(PWM_CHANNEL_B, rMotNewB);
 } 
+
+

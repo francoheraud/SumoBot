@@ -54,7 +54,7 @@ try:
             ax.autoscale_view(tight=True, scalex=True, scaley=True)
             fig.canvas.draw()
             fig.canvas.flush_events()
-
+            
         except ValueError:
             continue
 

@@ -1,12 +1,8 @@
-/**
-* USED TO TEST THE PI CONTROLLER!
-* By Franco Heraud
-*/
- 
+
  
  
 #include "Motor.h"
-#include "StartupMenu.h"
+#include "Startup.h"
  
 Motor_t motor;
 TFT_eSPI tft = TFT_eSPI();
@@ -41,8 +37,59 @@ static void updateController(void) {
   }
 }
 
+unsigned long lastPIUpdate = 0;
+static void updateMotorControl() {
+    static float velA = 0.0f, velB = 0.0f;
+    if (millis() - lastPIUpdate < 500) {
+        return;
+    }
+    
+    static int encoderCountOldA = 0;
+    static int encoderCountOldB = 0;
+    
+    velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
+    velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
+    
+    updatePIController(&motor, velA, velB);
+    Serial.printf("velDesired = %.2f | velActual = %.2f | pwm = %d\n",
+                  motor.desiredSpeedA, velA, motor.pwmA);
+    
+    encoderCountOldA = encoderCountA;
+    encoderCountOldB = encoderCountB;
+    lastPIUpdate = millis();
+}
+
+void loop() {
+  static unsigned long lastTime = millis();
+  static int encoderCountOldA = 0, encoderCountOldB = 0;
+
+  motor.direction = FORWARD;
+  move(&motor);
+
+
+  
+  if (millis() - lastTime > 500) {
+    // x100 added due to velocity being a bit low
+    float velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)PI_UPDATE_INTERVAL_MS;
+    float velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)PI_UPDATE_INTERVAL_MS;
+
+    //Serial.printf("---------------------\n");
+    //Serial.printf("EncA: %d | velA: %.2f | rmot: %d \n", encoderCountA, velA, rMotNewA);
+    Serial.printf("%.2f, %.2f\n", motor.desiredSpeedA, velA);
+
+    updatePIController(&motor, velA, velB);
+    
+    encoderCountOldA = encoderCountA;
+    encoderCountOldB = encoderCountB;
+    lastTime = millis();
+  }
+}
+
+
+
 // integrating the PI Controller and some demo functions for moving the sumobot
 // forward -> reverse -> left -> right -> CW -> CCW
+/*
 void loop() {
   static int demoState = 0;
   static unsigned long last = millis();
@@ -62,3 +109,4 @@ void loop() {
     last = millis();
   }
 }
+  */

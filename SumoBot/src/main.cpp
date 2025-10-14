@@ -57,7 +57,7 @@ void setup() {
 
 
 static int getAverageDistance() {
-    int sum;
+    int sum = 0;
     for (int i = 0; i < BUF_SIZE; i++) 
         sum += distanceBuf[i];
     return sum / BUF_SIZE;   

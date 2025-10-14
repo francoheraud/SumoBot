@@ -9,9 +9,8 @@
 
 TFT_eSPI tft = TFT_eSPI();
 
-Sensors_t sensor;
+Sensors_t *sensor_p;
 Motor_t motor;
-//robotMode mode;
 
 #define BUF_SIZE                    10
 #define DETECTION_THRESHOLD         30
@@ -44,7 +43,12 @@ unsigned long lastPIUpdate = 0;
 void setup() {
     initMotors();
     initSensors();
+    sensor_p = Sensors();
+    
     tft.init();
+	tft.setRotation(1);
+	tft.fillScreen(TFT_BLACK);
+	tft.setTextColor(TFT_WHITE, TFT_BLACK);
     userSelectFunction(&tft);
     motor.direction = ROTATE_CCW;
 }
@@ -71,15 +75,15 @@ static bool detectOpponent() {
 }
 
 static bool edgeDetected() {
-    return sensor.topLeft || sensor.topRight || 
-    sensor.bottomLeft || sensor.bottomRight;
+    return sensor_p->frontLeft || sensor_p->frontRight || 
+    sensor_p->rearLeft || sensor_p->rearRight;
 }
 
 
 static Direction getEdgeAvoidDirection() {
-    if (sensor.topLeft || sensor.topRight) return REVERSE;
-    if (sensor.bottomLeft || sensor.bottomRight) return FORWARD;
-    if (sensor.topLeft || sensor.bottomLeft) return ROTATE_CW; 
+    if (sensor_p->frontLeft || sensor_p->frontRight) return REVERSE;
+    if (sensor_p->rearLeft || sensor_p->rearRight) return FORWARD;
+    if (sensor_p->frontLeft || sensor_p->rearLeft) return ROTATE_CW; 
     else return ROTATE_CCW;  
 }
 
@@ -107,8 +111,8 @@ static void updateMotorControl() {
 
 
 static void chaseMode() {
-    bool opponentLeft = (sensor.leftCm < sensor.rightCm - TRACK_OPPONENT_THRESHOLD);
-    bool opponentRight = (sensor.rightCm < sensor.leftCm - TRACK_OPPONENT_THRESHOLD);
+    bool opponentLeft = (sensor_p->leftCm < sensor_p->rightCm - TRACK_OPPONENT_THRESHOLD);
+    bool opponentRight = (sensor_p->rightCm < sensor_p->leftCm - TRACK_OPPONENT_THRESHOLD);
 
     if (opponentLeft) motor.direction = LEFT;
     if (opponentRight) motor.direction = RIGHT;
@@ -118,11 +122,11 @@ static void chaseMode() {
 
 
 void loop() {
-    pollDistance(LEFT_ULTRASONIC, &sensor);
-    pollDistance(RIGHT_ULTRASONIC, &sensor);
-    detectLine(&sensor);
+    pollDistance(sensor_p);
+    pollDistance(sensor_p);
+    detectLine(sensor_p);
     
-    int avgDistance = (sensor.leftCm + sensor.rightCm) / 2;
+    int avgDistance = (sensor_p->leftCm + sensor_p->rightCm) / 2;
     updateDistanceBuf(avgDistance);
     
     switch (currentState) {
@@ -154,7 +158,7 @@ void loop() {
             }
             
 
-            if (sensor.leftCm == OUT_OF_RANGE && sensor.rightCm == OUT_OF_RANGE) {
+            if (sensor_p->leftCm == OUT_OF_RANGE && sensor_p->rightCm == OUT_OF_RANGE) {
                 currentState = SEARCHING;
             }
             break;
@@ -171,4 +175,3 @@ void loop() {
     move(&motor);
     updateMotorControl();
 }
-

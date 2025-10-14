@@ -15,7 +15,8 @@ char robotModeDescriptions[6][BUFFER_CHARS] = {
 
 menuOption currentMenu;
 
-void userSelectFunction(TFT_eSPI *tft) {
+void userSelectFunction(TFT_eSPI *tft, Sensors_t *s)
+{
   int prevLeft = 0, prevRight = 0;
   int currLeft = 0, currRight = 0;
   int prevChoice = -1, currChoice = 0;
@@ -26,14 +27,14 @@ void userSelectFunction(TFT_eSPI *tft) {
 
   while (!startOperation) {
     tft->setCursor(MENU_X_DATUM, MENU_Y_DATUM-5);
-    tft->printf("[L] START ROUTINE   [R] SCROLL OPTIONS");
+    tft->printf("[^] START ROUTINE   [v] SCROLL OPTIONS");
     currLeft = !digitalRead(LEFT_BUTTON);
     currRight = !digitalRead(RIGHT_BUTTON);
 
-    if (prevRight && !currRight) {
+    if (prevLeft && !currLeft) {
       currChoice = (currChoice + 1) % 6; // Must update this whenever we add/remove robotModes
       lastUpdateTime = millis();
-    } else if (prevLeft && !currLeft) {
+    } else if (prevRight && !currRight) {
       tft->setTextFont(0);
       startOperation = true;
     }
@@ -58,23 +59,25 @@ void userSelectFunction(TFT_eSPI *tft) {
   }
 
   tft->setTextFont(0);
+  tft->fillScreen(TFT_BLACK);
 
   switch (currentMenu) {
     case (CALIBRATE):
       recalibrateADC_GUI(tft);
-      userSelectFunction(tft);
+      userSelectFunction(tft, s);
       break;
     case (RESET):
       resetADCLookup(tft);
-      userSelectFunction(tft);
+      userSelectFunction(tft, s);
       break;
     case (MOTORS):
       break;
     case (SENSORS):
+      sensorDemo(tft, s);
       break;
     case (PRINT):
       printADCLookup(tft, TFT_SILVER);
-      userSelectFunction(tft);
+      userSelectFunction(tft, s);
       break;
     case (COMPETITION):
       break;

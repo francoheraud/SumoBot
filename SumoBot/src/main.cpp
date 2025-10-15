@@ -84,8 +84,8 @@ static bool edgeDetected() {
 
 
 static Direction getEdgeAvoidDirection() {
-    if (sensor.frontLeft || sensor.frontRight) return REVERSE;
-    if (sensor.rearLeft || sensor.rearRight) return FORWARD;
+    if (sensor.frontLeft && sensor.frontRight) return REVERSE;
+    if (sensor.rearLeft && sensor.rearRight) return FORWARD;
     if (sensor.frontLeft || sensor.rearLeft) return ROTATE_CW; 
     else return ROTATE_CCW;  
 }

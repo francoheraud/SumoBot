@@ -22,7 +22,6 @@ void userSelectFunction(TFT_eSPI *tft, Sensors_t *s, Motor_t *mot)
   int prevChoice = -1, currChoice = 0;
   bool startOperation = false;
   unsigned long lastUpdateTime = millis();
-  float delaySeconds = 9.9;
   tft->setTextFont(2);
 
   while (!startOperation) {

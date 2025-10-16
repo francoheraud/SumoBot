@@ -9,11 +9,13 @@
 #define LEFT_ECHO				17
 #define RIGHT_TRIGGER			43
 #define RIGHT_ECHO				44
-#define LINEDETECTOR_DAC		16
+#define LINEDETECTOR_DAC		13
 
 #define LEFT_ULTRASONIC 	0
 #define RIGHT_ULTRASONIC 	1
-#define OUT_OF_RANGE 		-1
+#define OUT_OF_RANGE 		999
+
+#define MAXIMUM_RANGE_ARENA		110
 
 // Set the maximum time we will wait for the echo pulse: this determines what is "OUT OF RANGE" for the sensor!
 // From my testing, 15000 us timeout limits the distance range to ~200 cm
@@ -29,7 +31,7 @@ extern int ADCLookupDefaults[16];
 extern const char *ADCStrings[16];
 
 typedef struct {
-	// Ultrasonic sensor distances stored to the nearest cm, -1 is OUT_OF_RANGE
+	// Ultrasonic sensor distances stored to the nearest cm, 999 is OUT_OF_RANGE
 	int leftCm;
 	int rightCm;
 

@@ -2,179 +2,235 @@
 #include "Sensors.h"
 #include "Startup.h"
 
-/**
- * Sumo Bot Competition Code
- * By Franco Heraud and ya boy Chat
- */
-
 TFT_eSPI tft = TFT_eSPI();
-
 Sensors_t sensor;
 Motor_t motor;
 
-#define BUF_SIZE                    10
-#define DETECTION_THRESHOLD         30
-#define TRACK_OPPONENT_THRESHOLD    30
-#define EDGE_BACKUP_TIME            300 // ms
+#define BUF_SIZE                 8
+#define DETECTION_THRESHOLD      30
+#define TRACK_OPPONENT_THRESHOLD 20
+#define LOST_REQUIRED            6
+#define EDGE_AVOID_TIME_MS       4000
+#define STARTUP_ROTATE_DELAY_MS  200   // delay between rotation checks during startup
 
-bool startupSequence = true, opponentDetected = false, startupTurning = true;
-
-const int detectionThreshold = 30; // obv change if needed
-const int trackOpponentThreshold = 40;
 int distanceBuf[BUF_SIZE] = {0};
 int bufIdx = 0;
-
-
-int avePrevFutValue, currIdx, prevIdx, futIdx;
 bool bufferFilled = false;
 
+enum RobotState { STARTUP_ROTATE, SEARCHING, CHASING, AVOID_EDGE };
+RobotState currentState = STARTUP_ROTATE;
+RobotState prevState = CHASING;
 
-enum RobotState {
-    SEARCHING,
-    CHASING,
-    AVOIDING_EDGE
-};
-
-RobotState currentState = SEARCHING;
-unsigned long edgeAvoidStartTime = 0;
-Direction edgeAvoidDirection = ROTATE_CW;
+Direction lastSeenDirection = ROTATE_CCW;
 unsigned long lastPIUpdate = 0;
+unsigned long lastDisplayUpdate = 0;
+unsigned long edgeAvoidStart = 0;
+static int detectConfirmCount = 0;
 
 void setup() {
-    pinMode(LEFT_BUTTON, INPUT);
-    pinMode(RIGHT_BUTTON, INPUT);
-    initMotors();
-    initSensors();
-    
-    tft.init();
-    tft.setTextSize(1);
-	tft.setRotation(3);
-	tft.fillScreen(TFT_BLACK);
-	tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    userSelectFunction(&tft, &sensor, &motor);
-    motor.direction = ROTATE_CCW;
-}
+  pinMode(LEFT_BUTTON, INPUT);
+  pinMode(RIGHT_BUTTON, INPUT);
+  pinMode(15,OUTPUT);
+  digitalWrite(15,HIGH);
 
+  initMotors();
+  initSensors();
+
+  tft.init();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+  userSelectFunction(&tft, &sensor, &motor);
+
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  for (int i = 0; i < BUF_SIZE; ++i) distanceBuf[i] = 1000;
+  bufIdx = 0;
+  bufferFilled = false;
+  lastPIUpdate = millis();
+
+  currentState = STARTUP_ROTATE;
+  motor.direction = ROTATE_CW;
+  move(&motor);
+}
 
 static int getAverageDistance() {
-    int sum;
-    for (int i = 0; i < BUF_SIZE; i++) 
-        sum += distanceBuf[i];
-    return sum / BUF_SIZE;   
+  long sum = 0;
+  for (int i = 0; i < BUF_SIZE; i++) sum += distanceBuf[i];
+  return (int)(sum / BUF_SIZE);
 }
 
-
 static void updateDistanceBuf(int distance) {
-    distanceBuf[bufIdx] = distance;
-    bufIdx = (bufIdx + 1) % BUF_SIZE;
-    if (bufIdx == 0) bufferFilled = true;
+  distanceBuf[bufIdx] = distance;
+  bufIdx = (bufIdx + 1) % BUF_SIZE;
+  if (bufIdx == 0) bufferFilled = true;
 }
 
 static bool detectOpponent() {
-    if (!bufferFilled) return false;
-    int aveDistance = getAverageDistance();
-    int currDistance = distanceBuf[(bufIdx - 1 + BUF_SIZE) % BUF_SIZE];
-    return (aveDistance - currDistance) > DETECTION_THRESHOLD;
+  if (!bufferFilled) return false;
+  int avg = getAverageDistance();
+
+  int currIdx = (bufIdx - 1 + BUF_SIZE) % BUF_SIZE;
+  int curr = distanceBuf[currIdx];
+
+  bool dropDetected = (avg - curr) > DETECTION_THRESHOLD || curr < TRACK_OPPONENT_THRESHOLD;
+  if (dropDetected) detectConfirmCount++;
+
+  else detectConfirmCount = max(0, detectConfirmCount - 1);
+  return (detectConfirmCount >= 2);
 }
 
-static bool edgeDetected() {
-    return sensor.frontLeft || sensor.frontRight || 
-    sensor.rearLeft || sensor.rearRight;
-}
-
-
-static Direction getEdgeAvoidDirection() {
-    if (sensor.frontLeft || sensor.frontRight) return REVERSE;
-    if (sensor.rearLeft || sensor.rearRight) return FORWARD;
-    if (sensor.frontLeft || sensor.rearLeft) return ROTATE_CW; 
-    else return ROTATE_CCW;  
-}
-
-
-// velocity updates arent in sync? test plz!
-// TODO: update to PID?
 static void updateMotorControl() {
-    static float velA = 0.0f, velB = 0.0f;
-    static unsigned long elapsedMs;
-    if (elapsedMs = millis() - lastPIUpdate < PI_UPDATE_INTERVAL_MS) {
-        return;
-    }
-    
-    static int encoderCountOldA = 0;
-    static int encoderCountOldB = 0;
-    
-    velA = 1000.0f * (encoderCountA - encoderCountOldA) / elapsedMs;
-    velB = 1000.0f * (encoderCountB - encoderCountOldB) / elapsedMs;
-    
-    updatePIController(&motor, velA, velB);
-    
-    encoderCountOldA = encoderCountA;
-    encoderCountOldB = encoderCountB;
-    lastPIUpdate = millis();
-}
+  static int encoderCountOldA = 0, encoderCountOldB = 0;
+  unsigned long now = millis();
+  unsigned long elapsedMs = now - lastPIUpdate;
+  if (elapsedMs < PI_UPDATE_INTERVAL_MS) return;
+  if (elapsedMs == 0) elapsedMs = 1;
 
+  float velA = 100.0f * (encoderCountA - encoderCountOldA) / (float)elapsedMs;
+  float velB = 100.0f * (encoderCountB - encoderCountOldB) / (float)elapsedMs;
+  updatePIController(&motor, velA, velB);
+  encoderCountOldA = encoderCountA;
+  encoderCountOldB = encoderCountB;
+  lastPIUpdate = now;
+}
 
 static void chaseMode() {
-    bool opponentLeft = (sensor.leftCm < sensor.rightCm - TRACK_OPPONENT_THRESHOLD);
-    bool opponentRight = (sensor.rightCm < sensor.leftCm - TRACK_OPPONENT_THRESHOLD);
+  bool haveBoth = (sensor.leftCm != OUT_OF_RANGE && sensor.rightCm != OUT_OF_RANGE);
+  bool opponentLeft = haveBoth && (sensor.leftCm < sensor.rightCm - TRACK_OPPONENT_THRESHOLD);
+  bool opponentRight = haveBoth && (sensor.rightCm < sensor.leftCm - TRACK_OPPONENT_THRESHOLD);
 
-    if (opponentLeft) motor.direction = LEFT;
-    if (opponentRight) motor.direction = RIGHT;
-    else motor.direction = FORWARD;
-    move(&motor);
+  if (opponentLeft) {
+    motor.direction = LEFT;
+    lastSeenDirection = LEFT;
+  } else if (opponentRight) {
+    motor.direction = RIGHT;
+    lastSeenDirection = RIGHT;
+  } else {
+    motor.direction = FORWARD;
+  }
+
+  move(&motor);
 }
 
+static bool lineDetected() {
+  return (sensor.frontLeft || sensor.frontRight || sensor.rearLeft || sensor.rearRight);
+}
+
+static Direction getNextDirection() {
+  if (sensor.frontLeft || sensor.frontRight)  return REVERSE;
+  else if (sensor.rearLeft && sensor.rearRight)   return FORWARD;
+  //else if (sensor.frontLeft)   return ROTATE_CCW;
+  //else if (sensor.frontRight)  return ROTATE_CW;
+  else if (sensor.rearLeft)   return RIGHT;
+  else if (sensor.rearRight)  return LEFT;
+}
+
+/*
+  if (sensor.frontLeft && sensor.frontRight)  return REVERSE;
+  else if (sensor.rearLeft && sensor.rearRight)  return FORWARD;
+  else if (sensor.frontLeft)  return RIGHT;
+  else if (sensor.frontRight) return LEFT;
+  else if (sensor.rearLeft)   return RIGHT;
+  else if (sensor.rearRight)  return LEFT;
+  return ROTATE_CW;
+*/
+
+static void updateDisplay(int left, int right, int avg) {
+  unsigned long now = millis();
+  if (now - lastDisplayUpdate < 100) return;
+  static int statusColor = TFT_BLACK;
+
+  switch (currentState) {
+    case STARTUP_ROTATE:
+      statusColor = TFT_CYAN;
+      break;
+    case SEARCHING:
+      statusColor = TFT_GOLD;
+      break;
+    case CHASING:
+      statusColor = TFT_GREEN;
+      break;
+    case AVOID_EDGE:
+    default:
+      statusColor = TFT_MAROON;
+      break;
+  }
+  if (currentState != prevState) {
+    tft.fillScreen(statusColor);
+    tft.setTextColor(TFT_BLACK, statusColor);
+  }
+
+  tft.setCursor(0, 0);
+  tft.printf("Left :%4d cm\n", left);
+  tft.printf("Right:%4d cm\n", right);
+  tft.printf("Avg  :%4d cm\n", avg);
+  tft.printf("State: %8s\n",
+    (currentState == STARTUP_ROTATE) ? "STARTUP" :
+    (currentState == SEARCHING) ? "SEARCH" :
+    (currentState == CHASING)  ? "CHASE" : "EDGE");
+  tft.printf("FL:%d FR:%d \nRL:%d RR:%d\n%4d",
+    sensor.frontLeft, sensor.frontRight, sensor.rearLeft, sensor.rearRight, sensor.analogReading);
+
+  prevState = currentState;
+}
 
 void loop() {
-    pollDistance(&sensor);
-    detectLine(&sensor);
-    
-    int avgDistance = (sensor.leftCm + sensor.rightCm) / 2;
-    updateDistanceBuf(avgDistance);
-    
-    switch (currentState) {
-        case SEARCHING:
-            motor.direction = ROTATE_CCW;
-            
-            if (detectOpponent()) {
-                currentState = CHASING;
-            }
-            
-            if (edgeDetected()) {
-                currentState = AVOIDING_EDGE;
-                edgeAvoidStartTime = millis();
-                edgeAvoidDirection = getEdgeAvoidDirection();
-                stopMotors();
-                delay(50);  
-            }
-            break;
-            
-        case CHASING:
-            chaseMode();
-            
-            if (edgeDetected()) {
-                currentState = AVOIDING_EDGE;
-                edgeAvoidStartTime = millis();
-                edgeAvoidDirection = getEdgeAvoidDirection();
-                stopMotors();
-                delay(50);
-            }
-            
+  pollDistance(&sensor);
+  delay(5);
+  pollDistance(&sensor);
+  detectLine(&sensor);
 
-            if (sensor.leftCm == OUT_OF_RANGE && sensor.rightCm == OUT_OF_RANGE) {
-                currentState = SEARCHING;
-            }
-            break;
-            
-        case AVOIDING_EDGE:
-            motor.direction = edgeAvoidDirection;
-            
-            if (millis() - edgeAvoidStartTime > EDGE_BACKUP_TIME) {
-                currentState = SEARCHING;  
-            }
-            break;
-    }
-    
-    move(&motor);
-    updateMotorControl();
+  int left = sensor.leftCm;
+  int right = sensor.rightCm;
+  int avg = (left + right) / 2;
+  updateDistanceBuf(avg);
+
+  switch (currentState) {
+    case STARTUP_ROTATE:
+      motor.direction = ROTATE_CW;
+      move(&motor);
+      if (detectOpponent()) {
+        currentState = CHASING;
+        detectConfirmCount = 0;
+      }
+      delay(STARTUP_ROTATE_DELAY_MS);
+      break;
+
+    case SEARCHING:
+      motor.direction = lastSeenDirection;
+      move(&motor);
+      if (lineDetected()) {
+        currentState = AVOID_EDGE;
+        edgeAvoidStart = millis();
+        move(&motor);
+      } else if (detectOpponent()) {
+        currentState = CHASING;
+        detectConfirmCount = 0;
+      }
+      break;
+
+    case CHASING:
+      chaseMode();
+      if (lineDetected()) {
+        currentState = AVOID_EDGE;
+
+        move(&motor);
+      } else if (sensor.leftCm == OUT_OF_RANGE && sensor.rightCm == OUT_OF_RANGE) {
+        currentState = SEARCHING;
+      }
+      break;
+
+    case AVOID_EDGE:
+      motor.direction = getNextDirection();
+      move(&motor);
+      if (millis() - edgeAvoidStart > EDGE_AVOID_TIME_MS) {
+        edgeAvoidStart = millis();
+        currentState = SEARCHING;
+      }
+      break;
+  }
+  updateMotorControl();
+  updateDisplay(sensor.leftCm, sensor.rightCm, avg);
 }

@@ -39,6 +39,7 @@ void initMotors(void) {
     pinMode(IN2B, OUTPUT);
     
     pinMode(PWMA, OUTPUT);
+    pinMode(PWMB, OUTPUT);
 
     ledcSetup(PWM_CHANNEL_A, PWM_FREQ, PWM_RESOLUTION);
     ledcSetup(PWM_CHANNEL_B, PWM_FREQ, PWM_RESOLUTION);
@@ -50,48 +51,50 @@ void initMotors(void) {
     initEncoderB();
 }
 
+
 void move(Motor_t *motor) {
     switch (motor->direction) {
         case FORWARD:
-            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
-            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
-            motor->desiredSpeedA = maxTickSpeed * 0.5f;
+            digitalWrite(IN1A, HIGH);   digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, HIGH);   digitalWrite(IN2B, LOW);
+
+            motor->desiredSpeedA = maxTickSpeed * 0.5f; // half speed is temporary...
             motor->desiredSpeedB = maxTickSpeed * 0.5f;
             break;
 
         case REVERSE:
-            digitalWrite(IN1A, LOW); digitalWrite(IN2A, HIGH);
-            digitalWrite(IN1B, LOW); digitalWrite(IN2B, HIGH);
-            motor->desiredSpeedA = maxTickSpeed * 0.5f;
-            motor->desiredSpeedB = maxTickSpeed * 0.5f;
+            digitalWrite(IN1A, LOW);    digitalWrite(IN2A, HIGH);
+            digitalWrite(IN1B, LOW);    digitalWrite(IN2B, HIGH);
+            motor->desiredSpeedA = maxTickSpeed * 0.9f;
+            motor->desiredSpeedB = maxTickSpeed * 0.9f;
             break;
 
         case RIGHT:
-            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
-            digitalWrite(IN1B, LOW);  digitalWrite(IN2B, LOW);
+            digitalWrite(IN1A, LOW);    digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, HIGH);   digitalWrite(IN2B, LOW);
             motor->desiredSpeedA = maxTickSpeed;
             motor->desiredSpeedB = 0.0f;
             break;
 
         case LEFT:
-            digitalWrite(IN1A, LOW);  digitalWrite(IN2A, LOW);
-            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
+            digitalWrite(IN1A, HIGH);   digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, LOW);    digitalWrite(IN2B, LOW);
             motor->desiredSpeedA = 0.0f;
             motor->desiredSpeedB = maxTickSpeed;
             break;
 
         case ROTATE_CW:
-            digitalWrite(IN1A, HIGH); digitalWrite(IN2A, LOW);
-            digitalWrite(IN1B, LOW);  digitalWrite(IN2B, HIGH);
-            motor->desiredSpeedA = maxTickSpeed * 0.5f;
-            motor->desiredSpeedB = maxTickSpeed * 0.5f;
+            digitalWrite(IN1A, LOW);    digitalWrite(IN2A, HIGH);
+            digitalWrite(IN1B, HIGH);   digitalWrite(IN2B, LOW);
+            motor->desiredSpeedA = maxTickSpeed * 0.35f;
+            motor->desiredSpeedB = maxTickSpeed * 0.35f;
             break;
 
         case ROTATE_CCW:
-            digitalWrite(IN1A, LOW);  digitalWrite(IN2A, HIGH);
-            digitalWrite(IN1B, HIGH); digitalWrite(IN2B, LOW);
-            motor->desiredSpeedA = maxTickSpeed * 0.5f;
-            motor->desiredSpeedB = maxTickSpeed * 0.5f;
+            digitalWrite(IN1A, HIGH);   digitalWrite(IN2A, LOW);
+            digitalWrite(IN1B, LOW);    digitalWrite(IN2B, HIGH);
+            motor->desiredSpeedA = maxTickSpeed * 0.35f;
+            motor->desiredSpeedB = maxTickSpeed * 0.35f;
             break;
     }
   
@@ -132,5 +135,3 @@ void updatePIController(Motor_t *motor, float velA, float velB) {
     ledcWrite(PWM_CHANNEL_A, rMotNewA);
     ledcWrite(PWM_CHANNEL_B, rMotNewB);
 } 
-
-

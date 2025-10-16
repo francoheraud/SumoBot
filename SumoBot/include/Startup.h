@@ -19,9 +19,8 @@
 #define BACKGROUND_COLOUR       TFT_BLACK
 
 enum menuOption {
-  SENSORS,
-  MOTORS,
   COMPETITION,
+  SENSORS,
   PRINT,
   CALIBRATE,
   RESET,

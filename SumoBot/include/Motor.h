@@ -12,8 +12,8 @@
 #define PWMB 12
 
 // Encoder pins
-#define ENCA 13
-#define ENCB 16
+#define ENCA 16
+#define ENCB 21
 
 // LEDC PWM Configuration
 #define PWM_CHANNEL_A 0
